@@ -1,3 +1,5 @@
+# ADAPTIVE XAI with Tree of Thoughts
+
 ## Prerequisites
 
 - Docker
