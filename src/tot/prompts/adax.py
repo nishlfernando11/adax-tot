@@ -99,7 +99,7 @@ vote_prompt = '''
 Given a task and multiple possible explanations, decide which **best fits the user’s state**.
 
 # Evaluation and Selection:
-    After generating 5 explanations, evaluate them based on:
+    After generating n explanations, evaluate them based on:
     1. **Relevance to the exact in-game action at this moment.**
     2. **Alignment with user’s cognitive and emotional state.**
     3. **Effectiveness at meeting the intended objective (e.g., reducing stress, improving trust).**
@@ -116,18 +116,18 @@ Given a task and multiple possible explanations, decide which **best fits the us
     # Example Output (Better than generic phrasing):
     **Scenario:** AI moves away from a busy station to a new one.
 
-    ❌ **Generic Explanation (BAD):** "AI optimizes movements to improve efficiency."
-    ✅ **Dynamic Explanation (GOOD):** "AI switched stations to avoid congestion and speed up orders."
+     **Generic Explanation (BAD):** "AI optimizes movements to improve efficiency."
+     **Dynamic Explanation (GOOD):** "AI switched stations to avoid congestion and speed up orders."
 
     **Scenario:** AI delivers Order A before Order B, even though B came first.
 
-    ❌ **Generic Explanation (BAD):** "AI follows efficient task prioritization."
-    ✅ **Dynamic Explanation (GOOD):** "AI delivered A first because its ingredients were ready."
+     **Generic Explanation (BAD):** "AI follows efficient task prioritization."
+     **Dynamic Explanation (GOOD):** "AI delivered A first because its ingredients were ready."
 
     **Scenario:** AI avoids picking up an ingredient that the user expected.
 
-    ❌ **Generic Explanation (BAD):** "AI adapts choices for team efficiency."
-    ✅ **Dynamic Explanation (GOOD):** "AI skipped onions since you already grabbed them."
+     **Generic Explanation (BAD):** "AI adapts choices for team efficiency."
+     **Dynamic Explanation (GOOD):** "AI skipped onions since you already grabbed them."
 
 Analyze each explanation based on:
 - **Cognitive load adaptation**: Is it too complex or too simple?

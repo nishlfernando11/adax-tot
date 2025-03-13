@@ -116,17 +116,20 @@ def get_context_df(current_state, recent_context_df):
     return context_df
 
 
-def format_content(row):
+
+def format_content(state):
+    '''
+    Formats the content of a state into a string for similarity search.'''
     content = (
-        f"Game state: Score {row['game_score']}, {row['num_collisions']} collisions,\n"
-        f"{row['time_left']} seconds left.\n"
-        f"User state: Stress {row['stress']}, trust {row['trust']}, cognitive load {row['cognitive_load']}.\n"
-        f"Task: {row['task_description']}\n"
-        # f"Best Explanation: {row['explanation_simplified']}\n"
-        # f"Alternative Explanation (Balanced): {row['explanation_balanced']}\n"
-        # f"Step-by-Step Explanation: {row['explanation_step_by_step']}\n"
-        # f"duration: {row.get('explanation_duration', 'medium')},  # Default: 'medium'\n"
-        # f"granularity: {row.get('explanation_granularity', 'steps')},  # Default: 'steps'\n"
-        # f"timing: {row.get('explanation_timing', 'reactive')}  # Default: 'reactive'"
+        f"Game state: Score {state['game_score']}, {state['num_collisions']} collisions,\n"
+        f"{state['time_left']} seconds left.\n"
+        f"User state: Stress {state['stress']}, trust {state['trust']}, cognitive load {state['cognitive_load']}.\n"
+        f"Task: {state['task_description']}\n"
+        # f"Best Explanation: {state['explanation_simplified']}\n"
+        # f"Alternative Explanation (Balanced): {state['explanation_balanced']}\n"
+        # f"Step-by-Step Explanation: {state['explanation_step_by_step']}\n"
+        # f"duration: {state.get('explanation_duration', 'medium')},  # Default: 'medium'\n"
+        # f"granularity: {state.get('explanation_granularity', 'steps')},  # Default: 'steps'\n"
+        # f"timing: {state.get('explanation_timing', 'reactive')}  # Default: 'reactive'"
     )
     return content

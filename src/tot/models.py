@@ -130,7 +130,7 @@ def ollama_chat_process(messages, model="mistral:latest", temperature=0.7, max_t
 #     outputs = []
 
 #     for _ in range(n):  # Generate 'n' responses
-#         prompt_text = messages[-1]["content"]  # TODO: Check this?? Only use the last user message
+#         prompt_text = messages[-1]["content"]
 
 #         try:
 #             # Call Ollama using its Python library

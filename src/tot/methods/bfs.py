@@ -104,6 +104,7 @@ def solve(args, task, idx, to_print=True):
     
     if to_print: 
         print(f'\n-- final choices --: {ys}\n')
+    #TODO: save current state and selected adax features
     return ys, {'steps': infos}
 
 def naive_solve(args, task, idx, to_print=True):
