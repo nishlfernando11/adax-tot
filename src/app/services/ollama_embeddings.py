@@ -5,17 +5,17 @@ import logging
 import numpy as np
 
 '''
-✅ Best Local Embedding Model Choices
+# Best Local Embedding Model Choices
 Model	Dimensions	Speed (Queries/sec)	Best For
-BAAI/bge-large-en	1536	🏎 Fast (~50-150/sec)	✅ Best RAG accuracy
-intfloat/e5-large-v2	1024	🔥 Faster (~200-400/sec)	✅ Balanced accuracy & speed
-all-MiniLM-L12-v2	384	⚡ Fastest (~500-1000/sec)	✅ Ultra-low latency
+BAAI/bge-large-en	1536	🏎 Fast (~50-150/sec)	# Best RAG accuracy
+intfloat/e5-large-v2	1024	🔥 Faster (~200-400/sec)	# Balanced accuracy & speed
+all-MiniLM-L12-v2	384	⚡ Fastest (~500-1000/sec)	# Ultra-low latency
 
-✅ Final Recommendation
+# Final Recommendation
 Your Priority	Best Model
-✅ Highest Quality (Best RAG, Accuracy)	BAAI/bge-large-en (1536D)
-✅ Fastest with High Accuracy	intfloat/e5-large-v2 (1024D)
-✅ Ultra-Fast but Slightly Lower Accuracy	all-MiniLM-L12-v2 (384D)
+# Highest Quality (Best RAG, Accuracy)	BAAI/bge-large-en (1536D)
+# Fastest with High Accuracy	intfloat/e5-large-v2 (1024D)
+# Ultra-Fast but Slightly Lower Accuracy	all-MiniLM-L12-v2 (384D)
 🚀 Recommendation:
 
 If you need top RAG performance, use bge-large-en (1536D).
