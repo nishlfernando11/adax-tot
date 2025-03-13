@@ -101,23 +101,6 @@ Setting up a new task is easy, and mainly involves two steps.
 * Set up a new task class in ``tot/tasks/`` and task files in ``tot/data/``. See ``tot/tasks/game24.py`` for an example. Add the task to ``tot/tasks/__init__.py``.
 * Set up task-specific prompts in ``tot/prompts/``. See ``tot/prompts/game24.py`` for an example. Depending on the nature of the task, choose ``--method_generate`` (choices=[``sample``, ``propose``]) and ``--method_evaluate`` (choices=[``value``, ``vote``]) and their corresponding prompts. 
 
-## References
-
-1.
-```bibtex
-@misc{yao2023tree,
-      title={{Tree of Thoughts}: Deliberate Problem Solving with Large Language Models}, 
-      author={Shunyu Yao and Dian Yu and Jeffrey Zhao and Izhak Shafran and Thomas L. Griffiths and Yuan Cao and Karthik Narasimhan},
-      year={2023},
-      eprint={2305.10601},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-}
-```
-
-2. https://github.com/daveebbelaar/pgvectorscale-rag-solution
-
-
 ## Pgvectorscale Documentation
 
 For more information about using PostgreSQL as a vector database in AI applications with Timescale, check out these resources:
@@ -181,3 +164,22 @@ When you get results from similarity_search:
 - Distances closer to 0 indicate high similarity.
 - Distances around 1 suggest little to no similarity.
 - Distances approaching 2 indicate opposite meanings (rare in practice).
+
+
+
+## References
+
+1.
+```bibtex
+@misc{yao2023tree,
+      title={{Tree of Thoughts}: Deliberate Problem Solving with Large Language Models}, 
+      author={Shunyu Yao and Dian Yu and Jeffrey Zhao and Izhak Shafran and Thomas L. Griffiths and Yuan Cao and Karthik Narasimhan},
+      year={2023},
+      eprint={2305.10601},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
+
+2. https://github.com/daveebbelaar/pgvectorscale-rag-solution
+

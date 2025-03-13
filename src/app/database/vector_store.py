@@ -9,74 +9,6 @@ from app.services.ollama_embeddings import EmbeddingGenerator
 from openai import OpenAI
 from timescale_vector import client
 
-
-# import requests
-# from typing import List
-
-# class VectorStore:
-#     """A class for managing vector operations and database interactions using Ollama for embeddings."""
-
-#     def __init__(self):
-#         """Initialize the VectorStore with settings and Timescale Vector client."""
-#         self.settings = get_settings()
-#         self.embedding_model = "nomic-embed-text"  # Change from OpenAI to Ollama model
-#         self.vector_settings = self.settings.vector_store
-#         self.vec_client = client.Sync(
-#             self.settings.database.service_url,
-#             self.vector_settings.table_name,
-#             self.vector_settings.embedding_dimensions,
-#             time_partition_interval=self.vector_settings.time_partition_interval,
-#         )
-
-#     def get_embedding(self, text: str) -> List[float]:
-#         """
-#         Generate embedding for the given text using Ollama.
-
-#         Args:
-#             text: The input text to generate an embedding for.
-
-#         Returns:
-#             A list of floats representing the embedding.
-#         """
-#         text = text.replace("\n", " ")  # Ensure clean input
-#         start_time = time.time()
-
-#         payload = {
-#             "model": self.embedding_model,
-#             "prompt": text,
-#             "stream": False,
-#         }
-
-#         try:
-#             response = requests.post("http://127.0.0.1:11434/api/generate", json=payload)
-
-#             if response.status_code == 200:
-#                 embedding_data = response.json().get("response", "").strip()
-                
-#                 # Convert response to a list of floats (ensure valid format)
-#                 embedding = [float(num) for num in embedding_data.split()]
-                
-#                 elapsed_time = time.time() - start_time
-#                 logging.info(f"Embedding generated in {elapsed_time:.3f} seconds")
-#                 return embedding
-
-#             else:
-#                 logging.error(f"Failed to get embedding: {response.text}")
-#                 return []
-
-#         except requests.exceptions.ConnectionError:
-#             logging.error("Could not connect to Ollama API. Is the server running?")
-#             return []
-
-#     def create_tables(self) -> None:
-#         """Create the necessary tables in the database."""
-#         self.vec_client.create_tables()
-
-#     def create_index(self) -> None:
-#         """Create the StreamingDiskANN index to speed up similarity search."""
-#         self.vec_client.create_embedding_index(client.DiskAnnIndex())
-
-
 class VectorStore:
     """A class for managing vector operations and database interactions."""
 
@@ -148,29 +80,6 @@ class VectorStore:
     def create_index(self) -> None:
         """Create the StreamingDiskANN index to spseed up similarity search"""
         self.vec_client.create_embedding_index(client.DiskAnnIndex())
-
-    # def create_index(self) -> None:
-    #     """Create a unique StreamingDiskANN index for fast similarity search."""
-    #     table_name = self.settings.vector_store.table_name  # Get table name dynamically
-    #     index_name = f"{table_name}_embedding_idx"  # Unique index per table
-
-    #     check_index_query = f"""
-    #     SELECT indexname FROM pg_indexes WHERE tablename = '{table_name}';
-    #     """
-
-    #     with self.connect() as conn:
-    #         with conn.cursor() as cur:
-    #             # Check if index exists
-    #             cur.execute(check_index_query)
-    #             existing_indexes = {row[0] for row in cur.fetchall()}
-                
-    #             if index_name not in existing_indexes:
-    #                 print(f"Creating DiskANN index: {index_name} for table {table_name}...")
-    #                 self.vec_client.create_embedding_index(client.DiskAnnIndex())  # Use fast ANN indexing
-    #                 print(f"Index {index_name} created successfully.")
-    #             else:
-    #                 print(f"Index {index_name} already exists, skipping creation.")
-
 
     def drop_index(self) -> None:
         """Drop the StreamingDiskANN index in the database"""
