@@ -1,72 +1,86 @@
-# Official Repo of Tree of Thoughts (ToT)
+## Prerequisites
 
-<p>
-    <a href="https://badge.fury.io/py/tree-of-thoughts-llm">
-        <img src="https://badge.fury.io/py/tree-of-thoughts-llm.svg">
-    </a>
-    <a href="https://www.python.org/">
-        <img alt="Build" src="https://img.shields.io/badge/Python-3.7+-1f425f.svg?color=purple">
-    </a>
-    <a href="https://copyright.princeton.edu/policy">
-        <img alt="License" src="https://img.shields.io/badge/License-MIT-blue">
-    </a>
-    <a href="https://zenodo.org/badge/latestdoi/642099326">
-        <img src="https://zenodo.org/badge/642099326.svg">
-    </a>
-</p>
-
-![teaser](pics/teaser.png)
-
-Official implementation for paper [Tree of Thoughts: Deliberate Problem Solving with Large Language Models](https://arxiv.org/abs/2305.10601) with code, prompts, model outputs.
-Also check [its tweet thread](https://twitter.com/ShunyuYao12/status/1659357547474681857) in 1min.
+- Docker
+- Python 3.7+ (3.10 in the set up)
+- OpenAI API key
+- PostgreSQL GUI client
 
 
-
-
-
-## Setup
-1. Set up OpenAI API key and store in environment variable ``OPENAI_API_KEY`` (see [here](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety)). 
-
-2. Install `tot` package in two ways:
-- Option 1: Install from PyPI
+## Setup the environmwnt
 ```bash
-pip install tree-of-thoughts-llm
-```
-- Option 2: Install from source
-```bash
-git clone https://github.com/princeton-nlp/tree-of-thought-llm
-cd tree-of-thought-llm
 pip install -r requirements.txt
-pip install -e .  # install `tot` package
 ```
 
+## Steps
 
-## Quick Start
-The following minimal script will attempt to solve the game of 24 with `4 5 6 10` (might be a bit slow as it's using GPT-4):
-```python
-import argparse
-from tot.methods.bfs import solve
-from tot.tasks.game24 import Game24Task
+1. Set up Docker environment
+2. Connect to the database using a PostgreSQL GUI client such as TablePlus
+3. Create a Python script to insert document chunks as vectors using LLM text embeddings (Mistral, OpenAI)
+4. Create a Python function to perform similarity search
 
-args = argparse.Namespace(backend='gpt-4', temperature=0.7, task='game24', naive_run=False, prompt_sample=None, method_generate='propose', method_evaluate='value', method_select='greedy', n_generate_sample=1, n_evaluate_sample=3, n_select_sample=5)
 
-task = Game24Task()
-ys, infos = solve(args, task, 900)
-print(ys[0])
+## Detailed Instructions
+
+### 1. Set up Docker environment
+
+Create a `docker-compose.yml` file with the following content:
+
+```yaml
+services:
+  timescaledb:
+    image: timescale/timescaledb-ha:pg16
+    container_name: timescaledb
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  timescaledb_data:
 ```
 
-And the output would be something like (note it's not deterministic, and sometimes the output can be wrong):
+Run the Docker container:
+
+```bash
+docker compose up -d
 ```
-10 - 4 = 6 (left: 5 6 6)
-5 * 6 = 30 (left: 6 30)
-30 - 6 = 24 (left: 24)
-Answer: (5 * (10 - 4)) - 6 = 24
-```
+
+### 2. Connect to the database using a PostgreSQL GUI client
+
+- Open client
+- Create a new connection with the following details:
+  - Host: localhost
+  - Port: 5432
+  - User: postgres
+  - Password: password
+  - Database: postgres
+
+### 3. Run ollama locally in docker
+
+ollama pull mistral
+ollama run mistral
+
+### 4. Create a Python script to insert document chunks as vectors
+
+See `insert_vectors.py` for the implementation. This script uses OpenAI's `text-embedding-3-small` model to generate embeddings.
+
+## Usage
+
+1. Create a copy of `example.env` and rename it to `.env`
+2. Open `.env` and fill in your OpenAI API key if using OpenAI. Leave the database settings as is
+3. Run the Docker container
+4. Install the required Python packages using `pip install -r requirements.txt`
+5. Execute `insert_vectors.py` to populate the database
+6. Play with `example.py` to perform adax task
+
 
 ## Paper Experiments
 
-Run experiments via ``sh scripts/{game24, text, crosswords}/{standard_sampling, cot_sampling, bfs}.sh``, except in crosswords we use a DFS algorithm for ToT, which can be run via ``scripts/crosswords/search_crosswords-dfs.ipynb``.
-
+Run experiments via ``sh scripts/{adax}/{standard_sampling, cot_sampling, bfs}.sh``.
 The very simple ``run.py`` implements the ToT + BFS algorithm, as well as the naive IO/CoT sampling. Some key arguments:
 
 - ``--naive_run``: if True, run naive IO/CoT sampling instead of ToT + BFS.
@@ -87,9 +101,9 @@ Setting up a new task is easy, and mainly involves two steps.
 * Set up a new task class in ``tot/tasks/`` and task files in ``tot/data/``. See ``tot/tasks/game24.py`` for an example. Add the task to ``tot/tasks/__init__.py``.
 * Set up task-specific prompts in ``tot/prompts/``. See ``tot/prompts/game24.py`` for an example. Depending on the nature of the task, choose ``--method_generate`` (choices=[``sample``, ``propose``]) and ``--method_evaluate`` (choices=[``value``, ``vote``]) and their corresponding prompts. 
 
-## Citations
-Please cite the paper and star this repo if you use ToT and find it interesting/useful, thanks! Feel free to contact shunyuyao.cs@gmail.com or open an issue if you have any questions.
+## References
 
+1.
 ```bibtex
 @misc{yao2023tree,
       title={{Tree of Thoughts}: Deliberate Problem Solving with Large Language Models}, 
@@ -100,3 +114,70 @@ Please cite the paper and star this repo if you use ToT and find it interesting/
       primaryClass={cs.CL}
 }
 ```
+
+2. https://github.com/daveebbelaar/pgvectorscale-rag-solution
+
+
+## Pgvectorscale Documentation
+
+For more information about using PostgreSQL as a vector database in AI applications with Timescale, check out these resources:
+
+- [GitHub Repository: pgvectorscale](https://github.com/timescale/pgvectorscale)
+- [Blog Post: PostgreSQL and Pgvector: Now Faster Than Pinecone, 75% Cheaper, and 100% Open Source](https://www.timescale.com/blog/pgvector-is-now-as-fast-as-pinecone-at-75-less-cost/)
+- [Blog Post: RAG Is More Than Just Vector Search](https://www.timescale.com/blog/rag-is-more-than-just-vector-search/)
+- [Blog Post: A Python Library for Using PostgreSQL as a Vector Database in AI Applications](https://www.timescale.com/blog/a-python-library-for-using-postgresql-as-a-vector-database-in-ai-applications/)
+
+## Why PostgreSQL?
+
+Using PostgreSQL with pgvectorscale as your vector database offers several key advantages over dedicated vector databases:
+
+- PostgreSQL is a robust, open-source database with a rich ecosystem of tools, drivers, and connectors. This ensures transparency, community support, and continuous improvements.
+
+- By using PostgreSQL, you can manage both your relational and vector data within a single database. This reduces operational complexity, as there's no need to maintain and synchronize multiple databases.
+
+- Pgvectorscale enhances pgvector with faster search capabilities, higher recall, and efficient time-based filtering. It leverages advanced indexing techniques, such as the DiskANN-inspired index, to significantly speed up Approximate Nearest Neighbor (ANN) searches.
+
+Pgvectorscale Vector builds on top of [pgvector](https://github.com/pgvector/pgvector), offering improved performance and additional features, making PostgreSQL a powerful and versatile choice for AI applications.
+
+## Using ANN search indexes to speed up queries
+
+Timescale Vector offers indexing options to accelerate similarity queries, particularly beneficial for large vector datasets (10k+ vectors):
+
+1. Supported indexes:
+   - timescale_vector_index (default): A DiskANN-inspired graph index
+   - pgvector's HNSW: Hierarchical Navigable Small World graph index
+   - pgvector's IVFFLAT: Inverted file index
+
+2. The DiskANN-inspired index is Timescale's latest offering, providing improved performance. Refer to the [Timescale Vector explainer blog](https://www.timescale.com/blog/pgvector-is-now-as-fast-as-pinecone-at-75-less-cost/) for detailed information and benchmarks.
+
+For optimal query performance, creating an index on the embedding column is recommended, especially for large vector datasets.
+
+## Cosine Similarity in Vector Search
+
+### What is Cosine Similarity?
+
+Cosine similarity measures the cosine of the angle between two vectors in a multi-dimensional space. It's a measure of orientation rather than magnitude.
+
+- Range: -1 to 1 (for normalized vectors, which is typical in text embeddings)
+- 1: Vectors point in the same direction (most similar)
+- 0: Vectors are orthogonal (unrelated)
+- -1: Vectors point in opposite directions (most dissimilar)
+
+### Cosine Distance
+
+In pgvector, the `<=>` operator computes cosine distance, which is 1 - cosine similarity.
+
+- Range: 0 to 2
+- 0: Identical vectors (most similar)
+- 1: Orthogonal vectors
+- 2: Opposite vectors (most dissimilar)
+
+### Interpreting Results
+
+When you get results from similarity_search:
+
+- Lower distance values indicate higher similarity.
+- A distance of 0 would mean exact match (rarely happens with embeddings).
+- Distances closer to 0 indicate high similarity.
+- Distances around 1 suggest little to no similarity.
+- Distances approaching 2 indicate opposite meanings (rare in practice).

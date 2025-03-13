@@ -1,6 +1,7 @@
 import os
 import openai
 import backoff 
+import ollama
 
 completion_tokens = prompt_tokens = 0
 
@@ -15,7 +16,7 @@ if api_base != "":
     print("Warning: OPENAI_API_BASE is set to {}".format(api_base))
     openai.api_base = api_base
 
-@backoff.on_exception(backoff.expo, openai.error.OpenAIError)
+@backoff.on_exception(backoff.expo, openai.OpenAIError) #DEV: updated openai.error.OpenAIError to openai.OpenAIError
 def completions_with_backoff(**kwargs):
     return openai.ChatCompletion.create(**kwargs)
 
@@ -45,3 +46,171 @@ def gpt_usage(backend="gpt-4"):
     elif backend == "gpt-4o":
         cost = completion_tokens / 1000 * 0.00250 + prompt_tokens / 1000 * 0.01
     return {"completion_tokens": completion_tokens, "prompt_tokens": prompt_tokens, "cost": cost}
+
+#---------#
+# Ollama  #
+#---------#
+
+import os
+import subprocess
+
+completion_tokens = prompt_tokens = 0  # Tracking tokens (if needed)
+
+def mistral_local(prompt, model="mistral:latest", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
+    """
+    Runs Mistral locally using Ollama instead of OpenAI's API.
+    
+    :param prompt: User input prompt
+    :param model: Ollama model name (default: mistral)
+    :param temperature: Sampling temperature
+    :param max_tokens: Maximum output tokens
+    :param n: Number of completions to generate
+    :param stop: Stop sequence for termination
+    :return: List of generated responses
+    """
+    messages = [{"role": "user", "content": prompt}]
+    return ollama_chat(messages, model=model, temperature=temperature, max_tokens=max_tokens, n=n, stop=stop)
+
+"""
+Ollama chat with ollama run command
+"""
+def ollama_chat_process(messages, model="mistral:latest", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
+    """
+    Calls Ollama's locally running model to process chat messages.
+    
+    :param messages: List of messages [{role: "user", content: "..."}]
+    :param model: Ollama model name (default: mistral)
+    :param temperature: Sampling temperature
+    :param max_tokens: Maximum response length
+    :param n: Number of completions
+    :param stop: Stop sequences
+    :return: List of responses
+    """
+    global completion_tokens, prompt_tokens
+    outputs = []
+
+    for _ in range(n):  # Generate 'n' responses
+        # Construct prompt as a single string (Ollama doesn't support message history directly)
+        prompt_text = messages[-1]["content"]  # Use only the last message
+
+        try:
+            # Run Ollama with local Mistral model
+            result = subprocess.run(
+                ["ollama", "run", model, prompt_text],
+                capture_output=True,
+                text=True
+            )
+            output_text = result.stdout.strip()
+            outputs.append(output_text)
+
+            # Simple token estimation
+            completion_tokens += len(output_text.split())
+            prompt_tokens += len(prompt_text.split())
+
+        except Exception as e:
+            print(f"Error running local Mistral: {e}")
+            outputs.append("Error")
+
+    return outputs
+
+
+# def ollama_chat(messages, model="mistral:latest", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
+#     """
+#     Calls the locally running Ollama model using the Ollama Python library.
+    
+#     :param messages: List of messages [{role: "user", content: "..."}]
+#     :param model: Ollama model name (default: mistral)
+#     :param temperature: Sampling temperature
+#     :param max_tokens: Maximum response length
+#     :param n: Number of completions
+#     :param stop: Stop sequences
+#     :return: List of responses
+#     """
+#     global completion_tokens, prompt_tokens
+#     outputs = []
+
+#     for _ in range(n):  # Generate 'n' responses
+#         prompt_text = messages[-1]["content"]  # TODO: Check this?? Only use the last user message
+
+#         try:
+#             # Call Ollama using its Python library
+#             response = ollama.chat(
+#                 model=model,
+#                 messages=[{"role": "user", "content": prompt_text}],
+#                 options={"temperature": temperature, "num_predict": max_tokens}
+#             )
+#             output_text = response["message"]["content"]
+#             outputs.append(output_text)
+
+#             # Simple token estimation
+#             completion_tokens += len(output_text.split())
+#             prompt_tokens += len(prompt_text.split())
+
+#         except Exception as e:
+#             print(f"Error running local Mistral: {e}")
+#             outputs.append("Error")
+
+#     return outputs
+
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def ollama_chat(messages, model="mistral:latest", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
+    """
+    Calls the locally running Ollama model using the Ollama Python library in parallel.
+    
+    :param messages: List of messages [{role: "user", content: "..."}]
+    :param model: Ollama model name (default: mistral:latest)
+    :param temperature: Sampling temperature
+    :param max_tokens: Maximum response length
+    :param n: Number of completions
+    :param stop: Stop sequences
+    :return: List of responses
+    """
+    global completion_tokens, prompt_tokens
+    outputs = []
+    completion_tokens = 0
+    prompt_text = messages[-1]["content"] 
+    prompt_tokens = len(prompt_text.split())  # Compute prompt tokens once
+    
+
+    def call_ollama():
+        """Calls the local Ollama model and returns the response."""
+        try:
+            response = ollama.chat(
+                model=model,
+                messages=[{"role": "user", "content": prompt_text}],
+                options={"temperature": temperature, "num_predict": max_tokens}
+            )
+            output_text = response["message"]["content"]
+            return output_text, len(output_text.split())  # Return response and token count
+        except Exception as e:
+            print(f"Error running local Mistral: {e}")
+            return "Error", 0
+
+    # Run API calls in parallel (max 5 concurrent requests)
+    with ThreadPoolExecutor(max_workers=min(n, 5)) as executor:
+        futures = [executor.submit(call_ollama) for _ in range(n)]
+        
+        for future in as_completed(futures):
+            output_text, tokens = future.result()
+            outputs.append(output_text)
+            completion_tokens += tokens  # Accumulate completion tokens
+
+    return outputs
+
+
+def mistral_usage():
+    """
+    Tracks estimated token usage (Ollama does not return token usage).
+    
+    :return: Dictionary with token usage data
+    """
+    global completion_tokens, prompt_tokens
+    return {
+        "completion_tokens": completion_tokens,
+        "prompt_tokens": prompt_tokens
+    }
+    
+    
+

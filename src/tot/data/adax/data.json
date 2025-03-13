@@ -1,0 +1,67 @@
+[
+  {
+    "timestamp": "2025-03-04T08:18:58.376354",
+    "behavioral_state": {
+      "score": 19,
+      "num_collisions": 3,
+      "time_left": 4
+    },
+    "physiological_state": {
+      "stress": "medium",
+      "trust": "low",
+      "cognitive_load": "medium"
+    }
+  },
+  {
+    "timestamp": "2025-03-04T08:18:59.376354",
+    "behavioral_state": {
+      "score": 15,
+      "num_collisions": 10,
+      "time_left": 57
+    },
+    "physiological_state": {
+      "stress": "high",
+      "trust": "high",
+      "cognitive_load": "high"
+    }
+  },
+  {
+    "timestamp": "2025-03-04T08:19:00.376354",
+    "behavioral_state": {
+      "score": 21,
+      "num_collisions": 1,
+      "time_left": 98
+    },
+    "physiological_state": {
+      "stress": "high",
+      "trust": "low",
+      "cognitive_load": "low"
+    }
+  },
+  {
+    "timestamp": "2025-03-04T08:19:01.376354",
+    "behavioral_state": {
+      "score": 50,
+      "num_collisions": 0,
+      "time_left": 22
+    },
+    "physiological_state": {
+      "stress": "medium",
+      "trust": "low",
+      "cognitive_load": "high"
+    }
+  },
+  {
+    "timestamp": "2025-03-04T08:19:02.376354",
+    "behavioral_state": {
+      "score": 45,
+      "num_collisions": 5,
+      "time_left": 34
+    },
+    "physiological_state": {
+      "stress": "medium",
+      "trust": "medium",
+      "cognitive_load": "medium"
+    }
+  }
+]

@@ -1,0 +1,6 @@
+timestamp;score;num_collisions;time_left;stress;trust;cognitive_load
+2025-03-04T08:18:58.376354;19;3;4;medium;low;medium
+2025-03-04T08:18:59.376354;15;10;57;high;high;high
+2025-03-04T08:19:00.376354;21;1;98;high;low;low
+2025-03-04T08:19:01.376354;50;0;22;medium;low;high
+2025-03-04T08:19:02.376354;45;5;34;medium;medium;medium
