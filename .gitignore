@@ -106,3 +106,5 @@ target/
 *.in
 
 .gitignore_copy
+src/data/*.csv
+src/*.ipynb
