@@ -70,7 +70,7 @@ def prepare_record(row):
     # content = (
     #     f"Task: {row['task_description']}\n"
     #     f"User State: Stress={row['stress']}, Trust={row['trust']}, Cognitive Load={row['cognitive_load']}\n"
-    #     f"Game Metrics: Score={row['game_score']}, Collisions={row['num_collisions']}\n"
+    #     f"Game Metrics: Score={row['score']}, Collisions={row['num_collisions']}\n"
     #     f"Explanation (Simplified): {row['explanation_simplified']}\n"
     #     f"Explanation (Balanced): {row['explanation_balanced']}\n"
     #     f"Explanation (Step-by-Step): {row['explanation_step_by_step']}"
@@ -80,9 +80,10 @@ def prepare_record(row):
     
     content = (
         f"Task: {row['task_description']}\n"
-        f"Best Explanation: {row['explanation_simplified']}\n"
-        f"Alternative Explanation (Balanced): {row['explanation_balanced']}\n"
-        f"Step-by-Step Explanation: {row['explanation_step_by_step']}"
+        f"Final Explanation: {row['final_explanation']}\n"
+        # f"Best Explanation: {row['explanation_simplified']}\n"
+        # f"Alternative Explanation (Balanced): {row['explanation_balanced']}\n"
+        # f"Step-by-Step Explanation: {row['explanation_step_by_step']}"
     )
     # Generate embedding vector
     embedding =  vec.get_embedding_ollama(content)
@@ -95,8 +96,9 @@ def prepare_record(row):
                 "stress": row["stress"],
                 "trust": row["trust"],
                 "cognitive_load": row["cognitive_load"],
-                "game_score": row["game_score"],
+                "score": row["score"],
                 "num_collisions": row["num_collisions"],
+                "time_left": row["time_left"],
                 "created_at": datetime.now().isoformat(),
             },
             "contents": content,
@@ -122,9 +124,10 @@ def format_content(row):
         f"{row['time_left']} seconds left.\n"
         f"User state: Stress {row['stress']}, trust {row['trust']}, cognitive load {row['cognitive_load']}.\n"
         f"Task: {row['task_description']}\n"
-        f"Best Explanation: {row['explanation_simplified']}\n"
-        f"Alternative Explanation (Balanced): {row['explanation_balanced']}\n"
-        f"Step-by-Step Explanation: {row['explanation_step_by_step']}\n"
+        f"Final Explanation: {row['final_explanation']}\n"
+        # f"Best Explanation: {row['explanation_simplified']}\n"
+        # f"Alternative Explanation (Balanced): {row['explanation_balanced']}\n"
+        # f"Step-by-Step Explanation: {row['explanation_step_by_step']}\n"
         f"duration: {row.get('explanation_duration', 'medium')},  # Default: 'medium'\n"
         f"granularity: {row.get('explanation_granularity', 'steps')},  # Default: 'steps'\n"
         f"timing: {row.get('explanation_timing', 'reactive')}  # Default: 'reactive'"
@@ -147,8 +150,11 @@ def process_row(row):
                 "stress": row["stress"],
                 "trust": row["trust"],
                 "cognitive_load": row["cognitive_load"],
-                "game_score": row["score"],
+                "score": row["score"],
                 "num_collisions": row["num_collisions"],
+                "time_left": row["time_left"],
+                "final_explanation": row["final_explanation"],
+                "explanation_features": {"explanation_duration":row["explanation_duration"], "explanation_granularity":row["explanation_granularity"], "explanation_timing":row["explanation_timing"]},
                 "created_at": datetime.now().isoformat(),
             },
             "contents": contents,

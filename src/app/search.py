@@ -75,7 +75,7 @@ def get_context_features(state):
         "stress": context_features["stress"],
         "trust": context_features["trust"],
         "cognitive_load": context_features["cognitive_load"],
-        "game_score": context_features["score"],
+        "score": context_features["score"],
         "num_collisions": context_features["num_collisions"],
         "time_left": context_features["time_left"],
         "task_description": task_description,  # Auto-inferred task description
@@ -106,14 +106,15 @@ def get_context_df(current_state, recent_context_df):
     # "stress": current_state["stress"],
     # "trust": current_state["trust"],
     # "cognitive_load": current_state["cognitive_load"],
-    # "game_score": current_state["game_score"],
+    # "score": current_state["score"],
     # "num_collisions": current_state["num_collisions"],
     # }
     current_state_df = pd.DataFrame([current_state])
 
     context_df = pd.concat([current_state_df, recent_context_df], ignore_index=True)
     print(context_df)
-    return context_df
+    # Changed to return recent  state
+    return recent_context_df
 
 
 
@@ -121,7 +122,7 @@ def format_content(state):
     '''
     Formats the content of a state into a string for similarity search.'''
     content = (
-        f"Game state: Score {state['game_score']}, {state['num_collisions']} collisions,\n"
+        f"Game state: Score {state['score']}, {state['num_collisions']} collisions,\n"
         f"{state['time_left']} seconds left.\n"
         f"User state: Stress {state['stress']}, trust {state['trust']}, cognitive load {state['cognitive_load']}.\n"
         f"Task: {state['task_description']}\n"

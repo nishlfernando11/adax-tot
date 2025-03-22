@@ -39,8 +39,10 @@ cot_prompt = '''
 # Explanation Structure:
     1. **Generate an explanation plan**, prioritizing different objectives while ensuring situational specificity:
       Plan:
-         1. Identify the user's **cognitive load, stress and trust level**.
-         2. Identify the task behavioural State such as score, num_collisions and time_left.
+         1. Identify the user's current and recent User States **cognitive load, stress and trust level**.
+         2. Identify the user's current and recent task behavioural States such as score, num_collisions and time_left. Identify the trends of num_collisions and score.
+            - If current collisions are significantly higer, this suggest, low trust and poor collaboration and need to suggest a corrective insight.
+            - If the score accumulation is low, suggest an clear guidance to collaboration.
          3. Select the appropriate explanation style:
             - **High cognitive load → Simplified, essential reasoning**
             - **High stress → Concise, sufficient reasoning**
@@ -81,7 +83,7 @@ State whether the assistant has enough context to answer the question:
 - **No, the assistant needs more context.**
 
 Condition: Generate a concise, 10-word explanation specific to this scenario and meaning must be preserved**.
-
+For each explanation, associate the adaptive features (e.g., duration: short, granularity: detailed etc.)  used in format: "features": ["...", "..."]
 Explanation:
 '''
 

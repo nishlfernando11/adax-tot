@@ -43,10 +43,53 @@ def get_proposals(task, x, y):
     proposals = mistral_local(propose_prompt, n=1, stop=None)[0].split('\n')
     return [y + _ + '\n' for _ in proposals]
 
+
+def summarize_rag_rows(df, top_n=3):
+    """
+    Summarizes top-N RAG result rows with structured game/user state and explanation metadata.
+    
+    Parameters:
+        df (pd.DataFrame): RAG dataframe with fields like 'content', 'task_description', etc.
+        top_n (int): Number of top rows to include based on lowest distance.
+
+    Returns:
+        str: Multi-line string summary.
+    """
+    df = df.dropna(subset=["content"]) #.sort_values(by="distance").head(top_n)
+    print("=======\n", df, "\n=======")
+    summaries = []
+    for _, row in df.iterrows():
+        timestamp = row.get("created_at", "Recent time")
+        task = row.get("task_description", "Understanding AI's latest decision")
+        content = row["content"].replace("\n", " ").strip()
+
+        # Extract info from content if needed
+        game_state = f"Score {row.get('score', '?')}, {row.get('num_collisions', '?')} collisions, {row.get('time_left', '?')} seconds left"
+        user_state = f"Stress {row.get('stress', '?')}, trust {row.get('trust', '?')}, cognitive load {row.get('cognitive_load', '?')}"
+        explanation_features = row.get("explanation_features", {})
+        explanation = row.get("final_explanation", "?")
+        duration = row.get("explanation_duration", "?")
+        granularity = row.get("explanation_granularity", "?")
+        timing = row.get("explanation_timing", "?")
+
+        summary = (
+            f"At {timestamp}, the game state was: {game_state}. "
+            f"User state: {user_state}. "
+            f"Task: {task}. "
+            f"Explanation: {explanation} "
+            f"Explanatory features: {explanation_features}. "
+            # f"(Duration: {duration}, Granularity: {granularity}, Timing: {timing})."
+        )
+        summaries.append(summary)
+
+    return "\n\n".join(summaries)
+
+
 def get_recent_context(x):
     input_dict = json.loads(x)
     context_df = AdaXTask.prepare_context(input_dict)
-    return context_df
+    prep_context = summarize_rag_rows(context_df)
+    return prep_context
 
 def get_samples(task, x, y, context, n_generate_sample, prompt_sample, stop):
     if prompt_sample == 'standard':
@@ -57,6 +100,7 @@ def get_samples(task, x, y, context, n_generate_sample, prompt_sample, stop):
         raise ValueError(f'prompt_sample {prompt_sample} not recognized')
     import time
     start = time.time()
+    print(f"Prompt: {prompt}")
     samples = mistral_local(prompt, n=n_generate_sample, stop=stop) # Generate n samples for the prompt
     end = time.time()
     print(f"Time taken to generate samples: {end-start}")

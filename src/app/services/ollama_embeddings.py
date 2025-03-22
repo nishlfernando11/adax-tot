@@ -23,7 +23,7 @@ If you want fastest + still accurate, use e5-large-v2 (1024D).
 If you want ultra-low latency, use MiniLM-L12-v2 (384D).
 '''
 class EmbeddingGenerator:
-    def __init__(self, provider="ollama", model="mistral:latest", target_dim=1536):
+    def __init__(self, provider="ollama", model="mistral:7b-instruct-q4_K_M", target_dim=1536):
         """
         Initialize the embedding provider.
         

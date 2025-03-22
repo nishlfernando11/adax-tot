@@ -4,6 +4,7 @@ from app.services.synthesizer_mistral import Synthesizer
 from timescale_vector import client
 import pandas as pd
 import json
+import app.search as search
 
 # Initialize VectorStore
 vec = VectorStore()
@@ -85,7 +86,7 @@ def get_context_features(system_state):
         "stress": context_features["stress"],
         "trust": context_features["trust"],
         "cognitive_load": context_features["cognitive_load"],
-        "game_score": context_features["system_performance"],  # Using performance as score
+        "score": context_features["system_performance"],  # Using performance as score
         "num_collisions": system_state.get("num_collisions", 0),
         "task_description": task_description,  # Auto-inferred task description
     }
@@ -114,7 +115,7 @@ def get_context_df(current_state, recent_context_df):
     # "stress": current_state["stress"],
     # "trust": current_state["trust"],
     # "cognitive_load": current_state["cognitive_load"],
-    # "game_score": current_state["game_score"],
+    # "score": current_state["score"],
     # "num_collisions": current_state["num_collisions"],
     # }
     current_state_df = pd.DataFrame([current_state])
@@ -125,9 +126,9 @@ def get_context_df(current_state, recent_context_df):
 
 
 # Current user and game state
-current_state = get_context_features(system_state)
-recent_context_df = get_recent_context(current_state)
-context_df = get_context_df(current_state, recent_context_df)
+current_state = search.get_context_features(system_state)
+recent_context_df = search.get_recent_context(current_state)
+context_df = search.get_context_df(current_state, recent_context_df)
 
 
 print("CONTEXT:----->\n",context_df)
@@ -158,7 +159,7 @@ current_state = {
     "stress": context_features["stress"],
     "trust": context_features["trust"],
     "cognitive_load": context_features["cognitive_load"],
-    "game_score": context_features["system_performance"],  # Using performance as score
+    "score": context_features["system_performance"],  # Using performance as score
     "num_collisions": system_state.get("num_collisions", 0),
     "task_description": task_description,  # Auto-inferred task description
 }
@@ -186,7 +187,7 @@ recent_context_df = pd.DataFrame(recent_context)
 #     "trust": current_state["trust"],
 #     "stress": current_state["stress"],
 #     "created_at": pd.Timestamp.now().isoformat(),  # Current timestamp
-#     "game_score": current_state["game_score"],
+#     "score": current_state["score"],
 #     "cognitive_load": current_state["cognitive_load"],
 #     "num_collisions": current_state["num_collisions"]
 # }])
@@ -195,7 +196,7 @@ context_data = {
     "stress": current_state["stress"],
     "trust": current_state["trust"],
     "cognitive_load": current_state["cognitive_load"],
-    "game_score": current_state["game_score"],
+    "score": current_state["score"],
     "num_collisions": current_state["num_collisions"],
 }
 current_state_df = pd.DataFrame([current_state])
@@ -229,7 +230,7 @@ current_state = {
     "stress": "high",
     "trust": "low",
     "cognitive_load": "high",
-    "game_score": 65,
+    "score": 65,
     "num_collisions": 5,
     "task_description": "Understanding why Overcooked AI chooses a specific path",
 }
@@ -258,7 +259,7 @@ current_state_df = pd.DataFrame([{
     "trust": current_state["trust"],
     "stress": current_state["stress"],
     "created_at": pd.Timestamp.now().isoformat(),  # Current timestamp
-    "game_score": current_state["game_score"],
+    "score": current_state["score"],
     "cognitive_load": current_state["cognitive_load"],
     "num_collisions": current_state["num_collisions"]
 }])
@@ -287,7 +288,7 @@ current_state = {
     "stress": "low",
     "trust": "low",
     "cognitive_load": "high",
-    "game_score": 65,
+    "score": 65,
     "num_collisions": 5,
     "task_description": "Understanding why AI chef picked up an onion",
 }
@@ -315,7 +316,7 @@ current_state_df = pd.DataFrame([{
     "trust": current_state["trust"],
     "stress": current_state["stress"],
     "created_at": pd.Timestamp.now().isoformat(),  # Current timestamp
-    "game_score": current_state["game_score"],
+    "score": current_state["score"],
     "cognitive_load": current_state["cognitive_load"],
     "num_collisions": current_state["num_collisions"]
 }])

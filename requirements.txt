@@ -26,4 +26,5 @@ instructor
 anthropic
 ollama
 sentence-transformers
+pylsl==1.17.6
 

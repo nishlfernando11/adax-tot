@@ -36,7 +36,7 @@ class MistralSettings(LLMSettings):
     """Mistral-specific settings extending LLMSettings."""
 
     # api_key: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
-    default_model: str = Field(default="mistral:latest")
+    default_model: str = Field(default="mistral:7b-instruct-q4_K_M")
     embedding_model: str = Field(default="mistral")
 
 

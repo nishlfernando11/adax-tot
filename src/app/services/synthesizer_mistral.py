@@ -111,7 +111,7 @@ class Synthesizer:
         - Cognitive Load: {question['cognitive_load']}
 
         # Game Metrics:
-        - Score: {question['game_score']}
+        - Score: {question['score']}
         - Collisions: {question['num_collisions']}
 
         # Retrieved Adaptive Explanation:
@@ -129,7 +129,7 @@ class Synthesizer:
 
         # Prepare Ollama request payload
         payload = {
-            "model": "mistral:latest",
+            "model": "mistral:7b-instruct-q4_K_M",
             "prompt": prompt,
             "stream": False,
         }

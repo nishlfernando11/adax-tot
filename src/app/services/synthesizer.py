@@ -154,7 +154,7 @@ class Synthesizer:
                 f"# Task Description:\n{question['task_description']}\n"
                 f"# User State:\n- Stress: {question['stress']}\n- Trust: {question['trust']}\n"
                 f"- Cognitive Load: {question['cognitive_load']}\n"
-                f"# Game Metrics:\n- Score: {question['game_score']}\n- Collisions: {question['num_collisions']}\n"
+                f"# Game Metrics:\n- Score: {question['score']}\n- Collisions: {question['num_collisions']}\n"
             ),
         },
         {

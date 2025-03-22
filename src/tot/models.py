@@ -56,7 +56,7 @@ import subprocess
 
 completion_tokens = prompt_tokens = 0  # Tracking tokens (if needed)
 
-def mistral_local(prompt, model="mistral:latest", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
+def mistral_local(prompt, model="mistral:7b-instruct-q4_K_M", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
     """
     Runs Mistral locally using Ollama instead of OpenAI's API.
     
@@ -74,7 +74,7 @@ def mistral_local(prompt, model="mistral:latest", temperature=0.7, max_tokens=10
 """
 Ollama chat with ollama run command
 """
-def ollama_chat_process(messages, model="mistral:latest", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
+def ollama_chat_process(messages, model="mistral:7b-instruct-q4_K_M", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
     """
     Calls Ollama's locally running model to process chat messages.
     
@@ -155,12 +155,12 @@ def ollama_chat_process(messages, model="mistral:latest", temperature=0.7, max_t
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def ollama_chat(messages, model="mistral:latest", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
+def ollama_chat(messages, model="mistral:7b-instruct-q4_K_M", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
     """
     Calls the locally running Ollama model using the Ollama Python library in parallel.
     
     :param messages: List of messages [{role: "user", content: "..."}]
-    :param model: Ollama model name (default: mistral:latest)
+    :param model: Ollama model name (default: mistral:7b-instruct-q4_K_M)
     :param temperature: Sampling temperature
     :param max_tokens: Maximum response length
     :param n: Number of completions
