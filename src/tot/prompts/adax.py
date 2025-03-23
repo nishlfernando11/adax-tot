@@ -1,5 +1,19 @@
 # Adaptive Explanation Prompts for `adax` Task
 
+STATIC_KNOWLEDGE_BASE = """
+# Role and Purpose:
+You are an AI assistant specializing in adaptive explainability for Human-Machine Teaming (HMT).
+Generate one-sentence explanations (≤10 words) for AI actions in Overcooked.
+
+# Constraints:
+- Adapt to user's stress, trust, cognitive load.
+- Tailor explanations by game metrics (score, collisions).
+- Maintain clarity under pressure.
+- Each explanation must include adaptive features: [duration, granularity, timing].
+- Justify explanation type chosen.
+"""
+
+
 # Standard Prompt for Explanation Generation
 standard_prompt = '''
 # Role and Purpose:
@@ -30,7 +44,7 @@ Output:
 '''
 
 # Chain-of-Thought (CoT) Prompt for Explanation Generation
-cot_prompt = '''
+cot_prompt1 = '''
 # Role and Purpose:
     You are an AI assistant specializing in **adaptive explainability** for Human-Machine Teaming (HMT) in dynamic environments.
     Your task is to generate **one-sentence explanations (maximum 10 words)** for AI behavior in Overcooked AI.  
@@ -97,6 +111,36 @@ Explanation:
     # }}
     
 # Voting Prompt for Explanation Selection
+
+
+cot_prompt = '''
+You are observing the current Overcooked game session between an AI chef and a human chef.
+
+Based on the following real-time data, generate an adaptive explanation (≤10 words) for the AI chef’s current behavior.
+
+**User’s Current Physiological and Emotional State**: {physiological_state}
+**User’s Current Task-Behavioral State**:{behavioral_state}
+**Recent User-AI Interaction Context**:{context}
+
+State whether the assistant has enough context to answer the question:
+- **Yes, the assistant has enough context.**
+- **No, the assistant needs more context.**
+
+**Requirements**:
+- The explanation must be concise, meaningful, and relevant to the AI’s current decision.
+- It must **adapt** to the user's emotional and behavioral states.
+- Avoid generalizations. Be specific to the scenario.
+- Justify or reassure if user state is poor (e.g., high stress or low trust).
+- Include explanation features in the following format:
+    "features": ["duration: short", "granularity: detailed", "timing: reactive"]
+- Output in JSON format:
+    # {{
+    #    "answer": "...",
+    #    "features": ["...", "..."],
+    #    "enough_context": true/false
+    # }}
+'''
+
 vote_prompt = '''
 Given a task and multiple possible explanations, decide which **best fits the user’s state**.
 

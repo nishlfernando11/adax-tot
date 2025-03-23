@@ -100,7 +100,7 @@ def get_samples(task, x, y, context, n_generate_sample, prompt_sample, stop):
         raise ValueError(f'prompt_sample {prompt_sample} not recognized')
     import time
     start = time.time()
-    print(f"Prompt: {prompt}")
+    # print(f"Prompt: {prompt}")
     samples = mistral_local(prompt, n=n_generate_sample, stop=stop) # Generate n samples for the prompt
     end = time.time()
     print(f"Time taken to generate samples: {end-start}")

@@ -54,9 +54,26 @@ def gpt_usage(backend="gpt-4"):
 import os
 import subprocess
 
+STATIC_KNOWLEDGE_BASE = """
+# Role and Purpose:
+You are an AI assistant specializing in adaptive explainability for Human-Machine Teaming (HMT).
+Your task is to generate concise, 10-word explanations for AI behavior in Overcooked AI.
+
+# Constraints:
+- Explanations must adapt to the user’s current stress, trust, and cognitive load.
+- Adapt phrasing and focus using game metrics (score, collisions, time).
+- Keep the explanation simple but meaningful — under pressure. Maintain clarity under pressure.
+- Use adaptive explainability features: [duration: (short/long), granularity: (highlevel/detailed), timing: (reactive, proactive)].
+- Reason only about the AI agent’s decisions and behaviors.
+- When needed, include corrective or supportive tone based on user signals.
+- Each explanation must include adaptive features used to generate that explanation: [duration, granularity, timing].
+- Justify explanation type chosen.
+"""
+
 completion_tokens = prompt_tokens = 0  # Tracking tokens (if needed)
 
-def mistral_local(prompt, model="mistral:7b-instruct-q4_K_M", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
+def mistral_local(prompt, model="mistral:7b-instruct-q4_K_M", temperature=0.7, max_tokens=100, n=1, stop=None) -> list:
+    # Set max_tokens to 100 from 1000
     """
     Runs Mistral locally using Ollama instead of OpenAI's API.
     
@@ -179,7 +196,12 @@ def ollama_chat(messages, model="mistral:7b-instruct-q4_K_M", temperature=0.7, m
         try:
             response = ollama.chat(
                 model=model,
-                messages=[{"role": "user", "content": prompt_text}],
+                messages=[
+                    {
+                        "role": "system",
+                        "content": STATIC_KNOWLEDGE_BASE
+                    },
+                    {"role": "user", "content": prompt_text}],
                 options={"temperature": temperature, "num_predict": max_tokens}
             )
             output_text = response["message"]["content"]

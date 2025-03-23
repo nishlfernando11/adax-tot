@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
-from app.database.vector_store import VectorStore
-from app.services.synthesizer_mistral import Synthesizer
+from database.vector_store import VectorStore
+from services.synthesizer_mistral import Synthesizer
 from timescale_vector import client
 import pandas as pd
 import json
-import app.search as search
+import time
 
 # Initialize VectorStore
 vec = VectorStore()
@@ -126,15 +126,15 @@ def get_context_df(current_state, recent_context_df):
 
 
 # Current user and game state
-current_state = search.get_context_features(system_state)
-recent_context_df = search.get_recent_context(current_state)
-context_df = search.get_context_df(current_state, recent_context_df)
+current_state = get_context_features(system_state)
+recent_context_df = get_recent_context(current_state)
+context_df = get_context_df(current_state, recent_context_df)
 
-
+start = time.time()
 print("CONTEXT:----->\n",context_df)
 # Generate adaptive explanation using RAG-based context window
 response = Synthesizer.generate_response(question=current_state, context=context_df)
-
+print(f"time taken: {time.time()-start}")
 # Print response and thought process
 print(f"ANSWER: \n{response.answer}")
 
@@ -264,11 +264,13 @@ current_state_df = pd.DataFrame([{
     "num_collisions": current_state["num_collisions"]
 }])
 
+start = time.time()
 context_df = pd.concat([current_state_df, recent_context_df], ignore_index=True)
 print(context_df)
 # Generate adaptive explanation using RAG-based context window
 response = Synthesizer.generate_response(question=current_state, context=context_df)
 print(response)
+print(f"time taken: {time.time()-start}")
 # Print response and thought process
 print(f"\n{response.answer}")
 
@@ -323,9 +325,10 @@ current_state_df = pd.DataFrame([{
 
 context_df = pd.concat([current_state_df, recent_context_df], ignore_index=True)
 print(context_df)
+start = time.time()
 # Generate adaptive explanation using RAG-based context window
 response = Synthesizer.generate_response(question=current_state, context=context_df)
-
+print
 # Print response and thought process
 print(f"\n{response.answer}")
 
