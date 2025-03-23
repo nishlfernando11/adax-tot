@@ -86,7 +86,7 @@ def get_context_features(state):
 def get_recent_context(current_state):
     # Retrieve **recent interactions** (limit to last n period)
     # @TODO: Replace with actual time range
-    time_range = (datetime.now() - timedelta(days=20), datetime.now()) # TODO:make 10 secs, or accept time range as input
+    time_range = (datetime.now() - timedelta(days=30), datetime.now()) # TODO:make 10 secs, or accept time range as input
     query = format_content(current_state)
 
     # ✅ Fix: Provide query_text for similarity search

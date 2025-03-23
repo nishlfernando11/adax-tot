@@ -80,8 +80,8 @@ class AdaXTask(Task):
         # Current user and game state
         current_state = searchService.get_context_features(state)
         recent_context_df = searchService.get_recent_context(current_state)
-        context_df = searchService.get_context_df(current_state, recent_context_df)
-        return context_df
+        # context_df = searchService.get_context_df(current_state, recent_context_df)
+        return recent_context_df
 
     @staticmethod
     def standard_prompt_wrap(x: str, y: str = '', context = pd.DataFrame) -> str:
