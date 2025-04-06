@@ -16,18 +16,30 @@ class AdaXTask(Task):
     Reward (r): Adaptive explanation score based on coherence and trust calibration.
     """
 
-    def __init__(self, file='data.json'):
+    def __init__(self, vector_db=None, isLive = True, file='data.json'): #TODO: load data live
         """
         file: JSON file containing game metrics, physiological & behavioral data.
         """
         super().__init__()
-        path = os.path.join(DATA_PATH, 'adax', file) #TODO: load data live
-        with open(path, 'r') as f:
-            self.data = json.load(f)  # Load task data
-        self.steps = 3  # Multi-step generation, evaluation, selection
+        if isLive:
+            self.data = []
+        else:
+            path = os.path.join(DATA_PATH, 'adax', file) 
+            with open(path, 'r') as f:
+                self.data = json.load(f)  # Load task data
+        self.steps = 1  # Multi-step generation, evaluation, selection
         # self.stops = [None]  # Stop conditions for explanations
         self.stops = [None] * self.steps  # Ensure stops has `steps` elements
-
+        self.vector_db = vector_db
+    
+    def set_data(self, data):
+        """Set the data for the task."""
+        self.data = data
+    
+    def get_data(self):
+        """Get the data for the task."""
+        """Returns the data for the task."""
+        return self.data
 
     def __len__(self) -> int:
         return len(self.data)
@@ -75,14 +87,19 @@ class AdaXTask(Task):
         return info
 
     @staticmethod
-    def prepare_context(state: dict) -> pd.DataFrame:
+    def prepare_prev_context(state: dict, vector_db, return_dataframe=True) -> pd.DataFrame:
         """Prepares the context features for generating adaptive explanations."""
         # Current user and game state
         current_state = searchService.get_context_features(state)
-        recent_context_df = searchService.get_recent_context(current_state)
-        context_df = searchService.get_context_df(current_state, recent_context_df)
-        return context_df
+        print("----->current_state", current_state)
+        recent_context = searchService.get_recent_context(current_state, vector_db, time_unit="seconds", time_value=5, return_dataframe=return_dataframe)
+        # context_df = searchService.get_context_df(current_state, recent_context_df)
+        return recent_context
 
+    @staticmethod
+    def summarize_current_game(state: dict):
+        return searchService.summarize_full_context(state)
+    
     @staticmethod
     def standard_prompt_wrap(x: str, y: str = '', context = pd.DataFrame) -> str:
         """Wraps the standard adaptive explanation prompt."""
@@ -90,9 +107,7 @@ class AdaXTask(Task):
         # context_df = AdaXTask.prepare_context(input_dict)
         return standard_prompt.format(
             # task_description=input_dict["task_description"],
-            context=context,
-            physiological_state=input_dict["physiological_state"],
-            behavioral_state=input_dict["behavioral_state"]
+            curr_ummary=context["current"]
             ) + y
 
     @staticmethod
@@ -103,7 +118,8 @@ class AdaXTask(Task):
         
         return cot_prompt.format(
             # task_description=input_dict["task_description"],
-            context=context,
+            prev_context=context["prev"],
+            curr_ummary=context["current"],
             physiological_state=input_dict["physiological_state"],
             behavioral_state=input_dict["behavioral_state"]
             ) + y

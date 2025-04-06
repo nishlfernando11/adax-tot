@@ -129,7 +129,7 @@ class Synthesizer:
 
         # Prepare Ollama request payload
         payload = {
-            "model": "mistral:7b-instruct-q4_K_M",
+            "model": "tinyllama",
             "prompt": prompt,
             "stream": False,
         }

@@ -1,67 +1,158 @@
 [
   {
     "timestamp": "2025-03-04T08:18:58.376354",
-    "behavioral_state": {
-      "score": 19,
-      "num_collisions": 3,
-      "time_left": 4
-    },
     "physiological_state": {
-      "stress": "medium",
-      "trust": "low",
-      "cognitive_load": "medium"
+      "cognitive_load": "low",
+      "stress": "high"
+    },
+    "behavioral_state": {
+      "state": "{\"players\": [{\"position\": [1, 2], \"orientation\": [0, -1], \"held_object\": null}, {\"position\": [3, 2], \"orientation\": [1, 0], \"held_object\": null}], \"objects\": [], \"bonus_orders\": [], \"all_orders\": [{\"ingredients\": [\"onion\", \"onion\", \"onion\"]}], \"timestep\": 34}",
+      "joint_action": "[[0, 0], [0, -1]]",
+      "reward": 0,
+      "time_left": 23.78111743927002,
+      "score": 0,
+      "time_elapsed": 6.2188825607299805,
+      "cur_gameloop": 35,
+      "layout": "[[\"X\", \"X\", \"P\", \"X\", \"X\"], [\"O\", \" \", \" \", \" \", \"O\"], [\"X\", \" \", \" \", \" \", \"X\"], [\"X\", \"D\", \"X\", \"S\", \"X\"]]",
+      "layout_name": "cramped_room",
+      "trial_id": "1742539546.4407632",
+      "player_0_id": "74994c5fd6de44f399efe56ea6925b4e",
+      "player_1_id": "PPOCrampedRoom_1",
+      "player_0_is_human": true,
+      "player_1_is_human": false,
+      "collision": false,
+      "num_collisions": 2,
+      "unix_timestamp": "1742539552.6596458"
     }
   },
   {
     "timestamp": "2025-03-04T08:18:59.376354",
-    "behavioral_state": {
-      "score": 15,
-      "num_collisions": 10,
-      "time_left": 57
-    },
     "physiological_state": {
-      "stress": "high",
-      "trust": "high",
-      "cognitive_load": "high"
+      "cognitive_load": "high",
+      "stress": "high"
+    },
+    "behavioral_state": {
+      "state": "{\"players\": [{\"position\": [1, 2], \"orientation\": [0, -1], \"held_object\": null}, {\"position\": [3, 2], \"orientation\": [1, 0], \"held_object\": null}], \"objects\": [], \"bonus_orders\": [], \"all_orders\": [{\"ingredients\": [\"onion\", \"onion\", \"onion\"]}], \"timestep\": 34}",
+      "joint_action": "[[0, 0], [0, -1]]",
+      "reward": 0,
+      "time_left": 21.78111743927002,
+      "score": 20,
+      "time_elapsed": 5.2188825607299805,
+      "cur_gameloop": 36,
+      "layout": "[[\"X\", \"X\", \"P\", \"X\", \"X\"], [\"O\", \" \", \" \", \" \", \"O\"], [\"X\", \" \", \" \", \" \", \"X\"], [\"X\", \"D\", \"X\", \"S\", \"X\"]]",
+      "layout_name": "cramped_room",
+      "trial_id": "1742539546.4407632",
+      "player_0_id": "74994c5fd6de44f399efe56ea6925b4e",
+      "player_1_id": "PPOCrampedRoom_1",
+      "player_0_is_human": true,
+      "player_1_is_human": false,
+      "collision": false,
+      "num_collisions": 3,
+      "unix_timestamp": "1742539552.6596458"
     }
   },
   {
     "timestamp": "2025-03-04T08:19:00.376354",
-    "behavioral_state": {
-      "score": 21,
-      "num_collisions": 1,
-      "time_left": 98
-    },
     "physiological_state": {
-      "stress": "high",
-      "trust": "low",
-      "cognitive_load": "low"
+      "cognitive_load": "low",
+      "stress": "high"
+    },
+    "behavioral_state": {
+      "state": "{\"players\": [{\"position\": [1, 2], \"orientation\": [0, -1], \"held_object\": null}, {\"position\": [3, 2], \"orientation\": [1, 0], \"held_object\": null}], \"objects\": [], \"bonus_orders\": [], \"all_orders\": [{\"ingredients\": [\"onion\", \"onion\", \"onion\"]}], \"timestep\": 34}",
+      "joint_action": "[[0, 0], [0, -1]]",
+      "reward": 0,
+      "time_left": 20.78111743927002,
+      "score": 20,
+      "time_elapsed": 4.2188825607299805,
+      "cur_gameloop": 37,
+      "layout": "[[\"X\", \"X\", \"P\", \"X\", \"X\"], [\"O\", \" \", \" \", \" \", \"O\"], [\"X\", \" \", \" \", \" \", \"X\"], [\"X\", \"D\", \"X\", \"S\", \"X\"]]",
+      "layout_name": "cramped_room",
+      "trial_id": "1742539546.4407632",
+      "player_0_id": "74994c5fd6de44f399efe56ea6925b4e",
+      "player_1_id": "PPOCrampedRoom_1",
+      "player_0_is_human": true,
+      "player_1_is_human": false,
+      "collision": false,
+      "num_collisions": 5,
+      "unix_timestamp": "1742539552.6596458"
     }
   },
   {
     "timestamp": "2025-03-04T08:19:01.376354",
-    "behavioral_state": {
-      "score": 50,
-      "num_collisions": 0,
-      "time_left": 22
-    },
     "physiological_state": {
-      "stress": "medium",
-      "trust": "low",
-      "cognitive_load": "high"
+      "cognitive_load": "low",
+      "stress": "high"
+    },
+    "behavioral_state": {
+      "state": "{\"players\": [{\"position\": [1, 2], \"orientation\": [0, -1], \"held_object\": null}, {\"position\": [3, 2], \"orientation\": [1, 0], \"held_object\": null}], \"objects\": [], \"bonus_orders\": [], \"all_orders\": [{\"ingredients\": [\"onion\", \"onion\", \"onion\"]}], \"timestep\": 34}",
+      "joint_action": "[[0, 0], [0, -1]]",
+      "reward": 0,
+      "time_left": 19.78111743927002,
+      "score": 40,
+      "time_elapsed": 3.2188825607299805,
+      "cur_gameloop": 38,
+      "layout": "[[\"X\", \"X\", \"P\", \"X\", \"X\"], [\"O\", \" \", \" \", \" \", \"O\"], [\"X\", \" \", \" \", \" \", \"X\"], [\"X\", \"D\", \"X\", \"S\", \"X\"]]",
+      "layout_name": "cramped_room",
+      "trial_id": "1742539546.4407632",
+      "player_0_id": "74994c5fd6de44f399efe56ea6925b4e",
+      "player_1_id": "PPOCrampedRoom_1",
+      "player_0_is_human": true,
+      "player_1_is_human": false,
+      "collision": false,
+      "num_collisions": 6,
+      "unix_timestamp": "1742539552.6596458"
     }
   },
   {
-    "timestamp": "2025-03-04T08:19:02.376354",
-    "behavioral_state": {
-      "score": 45,
-      "num_collisions": 5,
-      "time_left": 34
-    },
+    "timestamp": "2025-03-04T08:19:03.376354",
     "physiological_state": {
-      "stress": "medium",
-      "trust": "medium",
-      "cognitive_load": "medium"
+      "cognitive_load": "low",
+      "stress": "high"
+    },
+    "behavioral_state": {
+      "state": "{\"players\": [{\"position\": [1, 2], \"orientation\": [0, -1], \"held_object\": null}, {\"position\": [3, 2], \"orientation\": [1, 0], \"held_object\": null}], \"objects\": [], \"bonus_orders\": [], \"all_orders\": [{\"ingredients\": [\"onion\", \"onion\", \"onion\"]}], \"timestep\": 34}",
+      "joint_action": "[[0, 0], [0, -1]]",
+      "reward": 0,
+      "time_left": 18.78111743927002,
+      "score": 40,
+      "time_elapsed": 2.2188825607299805,
+      "cur_gameloop": 39,
+      "layout": "[[\"X\", \"X\", \"P\", \"X\", \"X\"], [\"O\", \" \", \" \", \" \", \"O\"], [\"X\", \" \", \" \", \" \", \"X\"], [\"X\", \"D\", \"X\", \"S\", \"X\"]]",
+      "layout_name": "cramped_room",
+      "trial_id": "1742539546.4407632",
+      "player_0_id": "74994c5fd6de44f399efe56ea6925b4e",
+      "player_1_id": "PPOCrampedRoom_1",
+      "player_0_is_human": true,
+      "player_1_is_human": false,
+      "collision": false,
+      "num_collisions": 6,
+      "unix_timestamp": "1742539552.6596458"
+    }
+  },
+  {
+    "timestamp": "2025-03-04T08:19:04.376354",
+    "physiological_state": {
+      "cognitive_load": "low",
+      "stress": "high"
+    },
+    "behavioral_state": {
+      "state": "{\"players\": [{\"position\": [1, 2], \"orientation\": [0, -1], \"held_object\": null}, {\"position\": [3, 2], \"orientation\": [1, 0], \"held_object\": null}], \"objects\": [], \"bonus_orders\": [], \"all_orders\": [{\"ingredients\": [\"onion\", \"onion\", \"onion\"]}], \"timestep\": 34}",
+      "joint_action": "[[0, 0], [0, -1]]",
+      "reward": 0,
+      "time_left": 18.78111743927002,
+      "score": 40,
+      "time_elapsed": 2.2188825607299805,
+      "cur_gameloop": 40,
+      "layout": "[[\"X\", \"X\", \"P\", \"X\", \"X\"], [\"O\", \" \", \" \", \" \", \"O\"], [\"X\", \" \", \" \", \" \", \"X\"], [\"X\", \"D\", \"X\", \"S\", \"X\"]]",
+      "layout_name": "cramped_room",
+      "trial_id": "1742539546.4407632",
+      "player_0_id": "74994c5fd6de44f399efe56ea6925b4e",
+      "player_1_id": "PPOCrampedRoom_1",
+      "player_0_is_human": true,
+      "player_1_is_human": false,
+      "collision": false,
+      "num_collisions": 6,
+      "unix_timestamp": "1742539552.6596458"
     }
   }
 ]

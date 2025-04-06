@@ -2,12 +2,14 @@ import logging
 import time
 from typing import Any, List, Optional, Tuple, Union
 from datetime import datetime
+import json
 
 import pandas as pd
 from app.config.settings import get_settings
 from app.services.ollama_embeddings import EmbeddingGenerator
 from openai import OpenAI
 from timescale_vector import client
+from app.config.settings import EMBEDDING_SIZE
 
 class VectorStore:
     """A class for managing vector operations and database interactions."""
@@ -25,6 +27,8 @@ class VectorStore:
             self.vector_settings.embedding_dimensions,
             time_partition_interval=self.vector_settings.time_partition_interval,
         )
+        self.embedder = EmbeddingGenerator(provider="sentence-transformers", model="all-MiniLM-L6-v2", target_dim=EMBEDDING_SIZE)
+        
 
     def get_embedding_ollama(self, text: str) -> List[float]:
         """
@@ -37,16 +41,12 @@ class VectorStore:
             A list of floats representing the embedding.
         """
         text = text.replace("\n", " ")
-        # start_time = time.time()
         # embedder = EmbeddingGenerator(provider="sentence-transformers", model="all-MiniLM-L6-v2", target_dim=384)
         # embedder = Emb/eddingGenerator(provider="ollama", model="mistral")
         # embedder = EmbeddingGenerator(provider="sentence-transformers", model="BAAI/bge-large-en", target_dim=1536)
-        embedder = EmbeddingGenerator(provider="sentence-transformers", model="intfloat/e5-large-v2", target_dim=1024)
 
-        embedding = embedder.get_embedding(text)
+        embedding = self.embedder.get_embedding(text)
         
-        # elapsed_time = time.time() - start_time
-        # logging.info(f"Embedding generated in {elapsed_time:.3f} seconds")
         return embedding
     
     def get_embedding_openai(self, text: str) -> List[float]:
@@ -93,9 +93,13 @@ class VectorStore:
             df: A pandas DataFrame containing the data to insert or update.
                 Expected columns: id, metadata, contents, embedding
         """
-        import json
+
+        # Convert Series to DataFrame first
+        if isinstance(df, pd.Series):
+            df = df.to_frame().T  # convert Series to DataFrame with one row
 
         records = df.to_records(index=False)
+
         print(list(records))
         # records = [(item[0], json.dumps(item[1]), item[2])  # Ensure metadata is a string
                         # for item in list(records)]
@@ -103,6 +107,9 @@ class VectorStore:
         
         self.vec_client.upsert(list(records)) # it was list(records) before
         logging.info(
+            f"Inserted {len(df)} records into {self.vector_settings.table_name}"
+        )
+        print(
             f"Inserted {len(df)} records into {self.vector_settings.table_name}"
         )
 

@@ -27,4 +27,5 @@ anthropic
 ollama
 sentence-transformers
 pylsl==1.17.6
+python_socketio==5.0.0
 
