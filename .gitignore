@@ -108,3 +108,12 @@ target/
 .gitignore_copy
 src/data/*.csv
 src/*.ipynb
+csvlogs
+datalogs
+
+notebook results
+
+src/LLMHandler.py
+src/emitService.py
+src/emittest.py
+src/tot.py

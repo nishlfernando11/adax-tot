@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 load_dotenv(dotenv_path="./.env")
 
+EMBEDDING_SIZE = 384 # 1024
 
 def setup_logging():
     """Configure basic logging for the application."""
@@ -50,7 +51,7 @@ class VectorStoreSettings(BaseModel):
     """Settings for the VectorStore."""
 
     table_name: str = "adax_embeddings" #"embeddings"
-    embedding_dimensions: int = 1024 #1536
+    embedding_dimensions: int = EMBEDDING_SIZE #1536
     time_partition_interval: timedelta = timedelta(days=7)
 
 

@@ -1,7 +1,7 @@
 import itertools
 import numpy as np
 from functools import partial
-from tot.models import gpt, mistral_local
+from tot.models import gpt, local_model
 from tot.tasks.adax import AdaXTask
 import json
 import difflib
@@ -9,6 +9,12 @@ import psycopg2
 from psycopg2.extras import Json
 from statistics import mean
 import re
+from collections import deque
+
+RECENT_STATE_SUMMARY_QUEUE = deque(maxlen=5)  # auto-removes oldest entries
+USE_CACHE = False
+NUM_ITERATIONS = 0
+CACHE_LIMIT = 2
 
 # ------- #
 # Mistral #
@@ -28,28 +34,43 @@ Generate one-sentence explanations (≤10 words) for AI actions in Overcooked.
 - Justify explanation type chosen.
 """
 
-def genAdaX(args, task, idx, to_print=True):
-    global mistral_local
-    mistral_local = partial(mistral_local, model=args.backend, temperature=args.temperature)
-    print(mistral_local)
+def genAdaX(args, task, idx, is_local=False):
     x = task.get_input(idx)  # input
-    return get_explanation(x)
+    return get_explanation(x, args, is_local)
     
 
 def get_recent_states(input_dict):
     prev_state_summary = AdaXTask.prepare_context(input_dict)
     prev_state_summary = summarize_rag_rows(prev_state_summary)
+    
     return prev_state_summary
 
-def get_explanation(x) :
+def get_explanation(x, args, is_local):
+    global USE_CACHE
+    global NUM_ITERATIONS
+    global CACHE_LIMIT
     input_dict = json.loads(x)
+    print("USE_CACHE===>?", USE_CACHE)
+    print("NUM_ITERATIONS===>?", NUM_ITERATIONS)
     state_summary = summarize_state(input_dict)
     print("state_summary===>?", state_summary)
-    prev_state_summary = get_recent_states(input_dict)
-    print("prev_state_summary===>?", prev_state_summary)
-    return generate_adaptive_explanation(state_summary, prev_state_summary)
+    if USE_CACHE:        
+        prev_state_summary = list(RECENT_STATE_SUMMARY_QUEUE)[-4:-1]
+        print("RECENT_STATE_SUMMARY_QUEUE===>?", prev_state_summary)
+        
+        USE_CACHE = False
+    else:
+        prev_state_summary = get_recent_states(input_dict)
+        print("prev_state_summary===>?", prev_state_summary)
+        print("NUM_ITERATIONS > CACHE_LIMIT===>?", NUM_ITERATIONS > CACHE_LIMIT)    
+
+        if NUM_ITERATIONS > CACHE_LIMIT:
+            USE_CACHE = True
+            NUM_ITERATIONS = 0
+        NUM_ITERATIONS += 1
+    return generate_adaptive_explanation(state_summary, prev_state_summary, args, is_local)
     
-def generate_adaptive_explanation(current_state, recent_states, kb=STATIC_KNOWLEDGE_BASE, model_name="mistral:7b-instruct-q4_K_M", n_generate_sample=1, stop=None):
+def generate_adaptive_explanation(current_state, recent_states, args, is_local, kb=STATIC_KNOWLEDGE_BASE):
     """
     Generate adaptive explanations based on dynamic user and game states.
 
@@ -93,29 +114,34 @@ def generate_adaptive_explanation(current_state, recent_states, kb=STATIC_KNOWLE
         }}
     Explanation:    
     """
-
-    generated_text = mistral_local(prompt, n=n_generate_sample, stop=stop)[0].strip()
+    print("prompt===>?", prompt)
+    global running_model
+    if is_local:
+        running_model = partial(local_model, model=args.backend, temperature=args.temperature)
+    else:
+        running_model = partial(gpt, model=args.backend, temperature=args.temperature)
+    
+    print(running_model)
+    
+    generated_text = running_model(prompt, n=args.n_generate_sample, stop=args.stop)[0].strip()
     print("generated_text===>?", generated_text)
     # Parse the generated text into explanation and features
     # explanation_lines = json.loads(generated_text)
     # Safely extract JSON using regex
-    json_match = re.search(r'\{.*\}', generated_text, re.DOTALL)
-    if json_match:
-        json_str = json_match.group()
-        decoded_response = json.loads(json_str)
-        print(decoded_response)
-        return decoded_response
-    else:
-        print("No valid JSON found.")
+    if not generated_text:
         return None
+    decoded_response = json.loads(generated_text)
+    return decoded_response
+    # json_match = re.search(r'\{.*\}', generated_text, re.DOTALL)
+    # if json_match:
+    #     json_str = json_match.group()
+    #     decoded_response = json.loads(json_str)
+    #     print(decoded_response)
+    #     return decoded_response
+    # else:
+    #     print("No valid JSON found.")
+    #     return None
     # explanation = explanation_lines[0].replace('Explanation:', '').strip()
-
-    # adaptive_features = []
-    # for line in explanation_lines[1:]:
-    #     if line.startswith('Features:'):
-    #         adaptive_features = [f.strip() for f in line.replace('Features:', '').replace('[', '').replace(']', '').replace('"', '').split(',')]
-    #         break
-
 
 # Example usage
 if __name__ == '__main__':
@@ -139,41 +165,105 @@ if __name__ == '__main__':
 # Agent to summarize the current user + game state into a natural language string
 
 def summarize_state(input_dict):
-    print("input_dict===>?", input_dict)
+    print("input_dict===>", input_dict)
     try:
-        user_state = f"User state: stress {input_dict['physiological_state']['stress']}, trust {input_dict['physiological_state']['trust']}, cognitive load {input_dict['physiological_state']['cognitive_load']}"
-        game_state = f"Game state: score {input_dict['behavioral_state']['score']}, {input_dict['behavioral_state']['num_collisions']} collisions, {input_dict['behavioral_state']['time_left']} seconds left."
+        # Extract physiological and behavioral states
+        physiological = input_dict.get("physiological_state", {})
+        behavioral = input_dict.get("behavioral_state", {})
+
+        # Format user state string
+        user_state = (
+            f"User state: stress {physiological.get('stress', '?')}, "
+            # f"trust {physiological.get('trust', '?')}, "
+            f"cognitive load {physiological.get('cognitive_load', '?')}"
+        )
+
+        # Parse JSON string of game state
+        game_state_raw = behavioral.get("state", '{}')
+        game_state = json.loads(game_state_raw)
+
+        # Extract player and environment data
+        ai = game_state['players'][1]
+        user = game_state['players'][0]
+
+        ai_position = ai.get("position", '?')
+        ai_orientation = ai.get("orientation", '?')
+        held_object = ai.get("held_object", 'none')
+        teammate_position = user.get("position", '?')
+
+        orders = game_state.get("all_orders", [])
+        order_ingredients = ', '.join(orders[0].get("ingredients", [])) if orders else "none"
+
+        score = behavioral.get("score", '?')
+        collisions = behavioral.get("num_collisions", '?')
+        time_left = behavioral.get("time_left", '?')
+
+        game_state_str = (
+            f"Game state: score {score}, {collisions} collisions, {time_left} seconds left."
+        )
+
+        # Trend analysis (if any)
         trend_info = analyze_trends(input_dict.get("recent_states", []))
 
-        ai_position = input_dict.get("ai_position", '?')
-        ai_orientation = input_dict.get("ai_orientation", '?')
-        held_object = input_dict.get("ai_held_object", 'none')
-        teammate_position = input_dict.get("teammate_position", '?')
-        station_states = input_dict.get("station_states", {})
-        order_ingredients = ', '.join(input_dict.get("orders", [{}])[0].get("ingredients", [])) if input_dict.get("orders") else "none"
+        # Additional state info
+        layout_name = behavioral.get("layout_name", '?')
+        timestep = game_state.get("timestep", '?')
+        cur_gameloop = behavioral.get("cur_gameloop", '?')
+        joint_action = behavioral.get("joint_action", '?')
+        collision_flag = behavioral.get("collision", '?')
+        reward = behavioral.get("reward", '?')
 
-        layout_name = input_dict.get("layout_name", '?')
-        timestep = input_dict.get("timestep", '?')
-        cur_gameloop = input_dict.get("cur_gameloop", '?')
-        joint_action = input_dict.get("joint_action", '?')
-        collision_flag = input_dict.get("collision", '?')
-        reward = input_dict.get("reward", '?')
-
-        station_info = f"Station states: {json.dumps(station_states)}. " if station_states else ""
-
+        # Build full summary
         full_state = (
             f"AI position: {ai_position}, facing {ai_orientation}, holding: {held_object}. "
             f"Teammate position: {teammate_position}. "
             f"Orders require: {order_ingredients}. "
             f"Layout: {layout_name}, timestep: {timestep}, gameloop: {cur_gameloop}. "
-            f"Last joint action: {joint_action}, reward: {reward}, collision occurred: {collision_flag}. "
-            f"{station_info}"
+            f"Last joint action: {joint_action}, reward: {reward}, collision occurred: {collision_flag}."
         )
 
-        return f"{user_state}. {game_state} {trend_info} {full_state}"
+        analysis_summary = f"{user_state}. {game_state_str} {trend_info} {full_state}"
+        return analysis_summary
 
     except Exception as e:
         return f"State summary error: {str(e)}"
+    
+    # print("input_dict===>?", input_dict)
+    # try:
+    #     user_state = f"User state: stress {input_dict['physiological_state']['stress']}, trust {input_dict['physiological_state']['trust']}, cognitive load {input_dict['physiological_state']['cognitive_load']}"
+    #     game_state = f"Game state: score {input_dict['behavioral_state']['score']}, {input_dict['behavioral_state']['num_collisions']} collisions, {input_dict['behavioral_state']['time_left']} seconds left."
+    #     trend_info = analyze_trends(input_dict.get("recent_states", []))
+
+    #     ai_position = input_dict.get("ai_position", '?')
+    #     ai_orientation = input_dict.get("ai_orientation", '?')
+    #     held_object = input_dict.get("ai_held_object", 'none')
+    #     teammate_position = input_dict.get("teammate_position", '?')
+    #     station_states = input_dict.get("station_states", {})
+    #     order_ingredients = ', '.join(input_dict.get("orders", [{}])[0].get("ingredients", [])) if input_dict.get("orders") else "none"
+
+    #     layout_name = input_dict.get("layout_name", '?')
+    #     timestep = input_dict.get("timestep", '?')
+    #     cur_gameloop = input_dict.get("cur_gameloop", '?')
+    #     joint_action = input_dict.get("joint_action", '?')
+    #     collision_flag = input_dict.get("collision", '?')
+    #     reward = input_dict.get("reward", '?')
+
+    #     station_info = f"Station states: {json.dumps(station_states)}. " if station_states else ""
+
+    #     full_state = (
+    #         f"AI position: {ai_position}, facing {ai_orientation}, holding: {held_object}. "
+    #         f"Teammate position: {teammate_position}. "
+    #         f"Orders require: {order_ingredients}. "
+    #         f"Layout: {layout_name}, timestep: {timestep}, gameloop: {cur_gameloop}. "
+    #         f"Last joint action: {joint_action}, reward: {reward}, collision occurred: {collision_flag}. "
+    #         f"{station_info}"
+    #     )
+    #     analysis_summary = f"{user_state}. {game_state} {trend_info} {full_state}"
+    #     RECENT_STATE_SUMMARY_QUEUE.append(analysis_summary)
+    #     return analysis_summary
+
+    # except Exception as e:
+    #     return f"State summary error: {str(e)}"
 
 # Basic trend analyzer for cognitive/game metrics
 def analyze_trends(recent_states):
@@ -221,6 +311,7 @@ def get_proposals(task, x, y):
     proposals = mistral_local(propose_prompt, n=1, stop=None)[0].split('\n')
     return [y + _ + '\n' for _ in proposals]
 
+
 def summarize_rag_rows(df, top_n=3):
     df = df.dropna(subset=["content"])
     summaries = []
@@ -239,6 +330,7 @@ def summarize_rag_rows(df, top_n=3):
             f"Explanation: {explanation} "
             f"Explanatory features: {explanation_features}."
         )
+        RECENT_STATE_SUMMARY_QUEUE.append(summary)
         summaries.append(summary)
     return "\n\n".join(summaries)
 

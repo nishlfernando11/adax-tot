@@ -2,7 +2,10 @@ import os
 import openai
 import backoff 
 import ollama
-
+from openai import OpenAI
+from dotenv import load_dotenv
+from tot.prompts.adax import STATIC_KNOWLEDGE_BASE
+load_dotenv(dotenv_path="./.env")
 completion_tokens = prompt_tokens = 0
 
 api_key = os.getenv("OPENAI_API_KEY", "")
@@ -10,31 +13,73 @@ if api_key != "":
     openai.api_key = api_key
 else:
     print("Warning: OPENAI_API_KEY is not set")
-    
+
 api_base = os.getenv("OPENAI_API_BASE", "")
 if api_base != "":
     print("Warning: OPENAI_API_BASE is set to {}".format(api_base))
     openai.api_base = api_base
+    
+client = OpenAI()
 
 @backoff.on_exception(backoff.expo, openai.OpenAIError) #DEV: updated openai.error.OpenAIError to openai.OpenAIError
 def completions_with_backoff(**kwargs):
-    return openai.ChatCompletion.create(**kwargs)
+    # return openai.ChatCompletion.create(**kwargs)
+    return client.chat.completions.create(**kwargs)
 
-def gpt(prompt, model="gpt-4", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
-    messages = [{"role": "user", "content": prompt}]
-    return chatgpt(messages, model=model, temperature=temperature, max_tokens=max_tokens, n=n, stop=stop)
+def gpt(prompt, model="gpt-4", temperature=0.7, max_tokens=1000, n=1, stop=None, parallel=False) -> list:
+    messages = [{
+                        "role": "system",
+                        "content": STATIC_KNOWLEDGE_BASE
+                    },
+                {"role": "user", "content": prompt}]
+    return chatgpt(messages, model=model, temperature=temperature, max_tokens=max_tokens, n=n, stop=stop, parallel=parallel)
     
-def chatgpt(messages, model="gpt-4", temperature=0.7, max_tokens=1000, n=1, stop=None) -> list:
+def chatgpt(messages, model="gpt-4", temperature=0.7, max_tokens=1000, n=1, stop=None,parallel=False) -> list:
     global completion_tokens, prompt_tokens
     outputs = []
-    while n > 0:
-        cnt = min(n, 20)
-        n -= cnt
-        res = completions_with_backoff(model=model, messages=messages, temperature=temperature, max_tokens=max_tokens, n=cnt, stop=stop)
-        outputs.extend([choice.message.content for choice in res.choices])
-        # log completion tokens
-        completion_tokens += res.usage.completion_tokens
-        prompt_tokens += res.usage.prompt_tokens
+    
+    if not parallel:
+        # Original sequential batching logic
+        while n > 0:
+            cnt = min(n, 20)
+            n -= cnt
+            res = completions_with_backoff(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                n=cnt,
+                stop=stop
+            )
+            outputs.extend([choice.message.content for choice in res.choices])
+            completion_tokens += res.usage.completion_tokens
+            prompt_tokens += res.usage.prompt_tokens
+        return outputs
+
+    # Parallel execution
+    def call_once():
+        try:
+            res = completions_with_backoff(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                n=1,
+                stop=stop
+            )
+            return res.choices[0].message.content, res.usage.completion_tokens, res.usage.prompt_tokens
+        except Exception as e:
+            print(f"Error during parallel call: {e}")
+            return "Error", 0, 0
+
+    with ThreadPoolExecutor(max_workers=min(n, 10)) as executor:
+        futures = [executor.submit(call_once) for _ in range(n)]
+        for future in as_completed(futures):
+            output, c_tokens, p_tokens = future.result()
+            outputs.append(output)
+            completion_tokens += c_tokens
+            prompt_tokens += p_tokens
+
     return outputs
     
 def gpt_usage(backend="gpt-4"):
@@ -54,25 +99,25 @@ def gpt_usage(backend="gpt-4"):
 import os
 import subprocess
 
-STATIC_KNOWLEDGE_BASE = """
-# Role and Purpose:
-You are an AI assistant specializing in adaptive explainability for Human-Machine Teaming (HMT).
-Your task is to generate concise, 10-word explanations for AI behavior in Overcooked AI.
+# STATIC_KNOWLEDGE_BASE = """
+# # Role and Purpose:
+# You are an AI assistant specializing in adaptive explainability for Human-Machine Teaming (HMT).
+# Your task is to generate concise, 10-word explanations for AI behavior in Overcooked AI.
 
-# Constraints:
-- Explanations must adapt to the user’s current stress, trust, and cognitive load.
-- Adapt phrasing and focus using game metrics (score, collisions, time).
-- Keep the explanation simple but meaningful — under pressure. Maintain clarity under pressure.
-- Use adaptive explainability features: [duration: (short/long), granularity: (highlevel/detailed), timing: (reactive, proactive)].
-- Reason only about the AI agent’s decisions and behaviors.
-- When needed, include corrective or supportive tone based on user signals.
-- Each explanation must include adaptive features used to generate that explanation: [duration, granularity, timing].
-- Justify explanation type chosen.
-"""
+# # Constraints:
+# - Explanations must adapt to the user’s current stress, trust, and cognitive load.
+# - Adapt phrasing and focus using game metrics (score, collisions, time).
+# - Keep the explanation simple but meaningful — under pressure. Maintain clarity under pressure.
+# - Use adaptive explainability features: [duration: (short/long), granularity: (highlevel/detailed), timing: (reactive, proactive)].
+# - Reason only about the AI agent’s decisions and behaviors.
+# - When needed, include corrective or supportive tone based on user signals.
+# - Each explanation must include adaptive features used to generate that explanation: [duration, granularity, timing].
+# - Justify explanation type chosen.
+# """
 
 completion_tokens = prompt_tokens = 0  # Tracking tokens (if needed)
 
-def mistral_local(prompt, model="mistral:7b-instruct-q4_K_M", temperature=0.7, max_tokens=100, n=1, stop=None) -> list:
+def local_model(prompt, model="mistral:7b-instruct-q4_K_M", temperature=0.7, max_tokens=300, n=1, stop=None) -> list:
     # Set max_tokens to 100 from 1000
     """
     Runs Mistral locally using Ollama instead of OpenAI's API.
@@ -222,7 +267,7 @@ def ollama_chat(messages, model="mistral:7b-instruct-q4_K_M", temperature=0.7, m
     return outputs
 
 
-def mistral_usage():
+def local_usage():
     """
     Tracks estimated token usage (Ollama does not return token usage).
     
