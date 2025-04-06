@@ -18,7 +18,7 @@ logging.basicConfig(filename=f'datalogs/{log_filename}',
 csv_dir = 'csvlogs'
 os.makedirs(csv_dir, exist_ok=True)
 
-stream_names = ['ECG', 'HR', 'Accel', 'IR', 'RR', 'SkinTemp', 'GSR', 'Eye', 'Overcooked']
+stream_names = ['EQ_ECG_Stream', 'EQ_HR_Stream', 'EQ_Accel_Stream', 'EQ_IR_Stream', 'EQ_RR_Stream', 'EQ_SkinTemp_Stream', 'EQ_GSR_Stream', 'Eye_Tracker_Stream', 'OvercookedStream', 'Emotiv_EEG', 'Emotiv_MET']
 csv_files = {}
 csv_writers = {}
 unified_writer = None
