@@ -228,7 +228,119 @@ def summarize_player_status(data_obj):
         return f"Player status summary error: {str(e)}"
 
 
+import json
+import math
+
+ORIENTATION_TO_DIRECTION = {
+    (0, -1): "up",
+    (0, 1): "down",
+    (-1, 0): "left",
+    (1, 0): "right",
+    (0, 0): "still"
+}
+
+def summarize_full_context_detailed(data_obj, adax_data=None, physio_inference=None):
+    try:
+        behavioral = data_obj.get("behavioral_state", {})
+        game_state_raw = behavioral.get("state", '{}')
+        game_state = json.loads(game_state_raw)
+        timestep = game_state.get("timestep", '?')
+        layout_name = behavioral.get("layout_name", '?')
+
+        players = game_state.get("players", [])
+        p0_is_human = behavioral.get("player_0_is_human", False)
+        p1_is_human = behavioral.get("player_1_is_human", False)
+
+        player_positions = []
+        player_info = []
+        for idx, player in enumerate(players):
+            role = "human" if (p0_is_human if idx == 0 else p1_is_human) else "AI"
+            position = player.get("position", '?')
+            player_positions.append(position)
+            orientation_tuple = tuple(player.get("orientation", (0, 0)))
+            orientation = ORIENTATION_TO_DIRECTION.get(orientation_tuple, str(orientation_tuple))
+            held_object = player.get("held_object")
+
+            if held_object is None:
+                obj_status = "holding nothing"
+            else:
+                obj_name = held_object.get("name", "an object")
+                obj_ready = held_object.get("is_ready", False)
+                obj_status = f"holding {obj_name}{' (ready)' if obj_ready else ''}"
+
+            player_info.append(f"The {role} player is at {position}, facing {orientation}, and is {obj_status}.")
+
+        score = behavioral.get("score", 0)
+        time_elapsed = behavioral.get("time_elapsed", 1e-6)
+        num_collisions = behavioral.get("num_collisions", 0)
+        collision_flag = behavioral.get("collision", False)
+        time_left = behavioral.get("time_left", 0)
+
+        score_rate = round(score / time_elapsed, 2)
+        collision_rate = round(num_collisions / time_elapsed, 2)
+
+        objects = game_state.get("objects", [])
+        soup_summaries = []
+        for obj in objects:
+            if obj.get("name") == "soup":
+                ing_count = len(obj.get("_ingredients", []))
+                is_cooking = obj.get("is_cooking", False)
+                is_ready = obj.get("is_ready", False)
+                tick = obj.get("cooking_tick", 0)
+
+                if is_ready:
+                    soup_summaries.append("One soup is ready.")
+                elif is_cooking:
+                    soup_summaries.append(f"Soup cooking, {20 - tick} timesteps left.")
+                elif ing_count < 3:
+                    soup_summaries.append(f"Pot has {ing_count}/3 onions.")
+                else:
+                    soup_summaries.append("Pot is full, ready to cook.")
+
+        soup_status = " ".join(soup_summaries) if soup_summaries else "No soups being prepared."
+
+        orders = game_state.get("all_orders", [])
+        total_required_ingredients = sum(len(order.get("ingredients", [])) for order in orders)
+        completed_ingredients = sum(len(obj.get("_ingredients", [])) for obj in objects if obj.get("name") == "soup")
+
+        ingredient_progress = f"Ingredients (onions) in pots: {completed_ingredients} of {total_required_ingredients}."
+        completed_orders = f"Completed orders: {int(score / 20)}."
+
+        if len(player_positions) == 2:
+            dx = player_positions[0][0] - player_positions[1][0]
+            dy = player_positions[0][1] - player_positions[1][1]
+            dist = math.sqrt(dx ** 2 + dy ** 2)
+            proximity = f"Player distance: {round(dist, 2)} tiles."
+        else:
+            proximity = "Player proximity unknown."
+
+        time_tag = "Low time left!" if time_left < 10 else "Time remaining is adequate."
+
+        performance_summary = (
+            f"Layout: {layout_name}, timestep: {timestep}. Score rate: {score_rate}/s, Collision rate: {collision_rate}/s.\n"
+            f"{ingredient_progress} {soup_status} {proximity} {time_tag} (time left {time_left}) {completed_orders}"
+        )
+
+        if collision_flag:
+            performance_summary += " A collision just occurred."
+
+        if physio_inference:
+            stress = physio_inference.get("stress", '?')
+            trust = physio_inference.get("trust", '?')
+            cogload = physio_inference.get("cognitive_load", '?')
+            performance_summary += f" | User state: stress={stress}, trust={trust}, cognitive_load={cogload}."
+
+        if adax_data:
+            features = adax_data.get("features", [])
+            performance_summary += f" | Explanation features: {', '.join(features)}."
+
+        return f"{performance_summary} {' '.join(player_info)}"
+
+    except Exception as e:
+        return f"Full context summary error: {str(e)}"
+
 def summarize_full_context(data_obj, adax_data=None, physio_inference=None):
+    print(data_obj)
     try:
         behavioral = data_obj.get("behavioral_state", {})
         game_state_raw = behavioral.get("state", '{}')
@@ -314,6 +426,44 @@ def summarize_full_context(data_obj, adax_data=None, physio_inference=None):
         return f"Full context summary error: {str(e)}"
 
 
+def standard_rule_based_explanation(game_data):
+    """
+    Simpler and more standard static explanation logic for onion-only Overcooked gameplay.
+    Prioritizes minimal and non-overlapping decision rules.
+    """
+    try:
+        parsed_state = json.loads(game_data.get("state", "{}"))
+        players = parsed_state.get("players", [])
+        objects = parsed_state.get("objects", [])
+
+        ai_index = 1 if game_data.get("player_0_is_human", True) else 0
+        ai_player = players[ai_index] if len(players) > ai_index else {}
+        held_object = ai_player.get("held_object")
+
+        if held_object:
+            obj_name = held_object.get("name")
+            if obj_name == "onion":
+                return "I picked onion to prepare soup."
+            if obj_name == "dish":
+                return "I picked dish to serve soup."
+            if obj_name == "soup":
+                return "I picked soup to deliver."
+
+        for obj in objects:
+            if obj.get("name") == "soup":
+                if obj.get("is_ready"):
+                    return "Soup is ready to be delivered."
+                if obj.get("is_cooking"):
+                    return "Soup is cooking."
+                if len(obj.get("_ingredients", [])) < 3:
+                    return "Pot needs more onions."
+
+        return "I’m going for soup preparation."
+
+    except Exception as e:
+        return f"Standard static explanation error: {str(e)}"
+
+
 def get_context_features(state):
     # Extract context
     context_features = extract_system_context(state)
@@ -361,6 +511,8 @@ def get_recent_context(current_state, vector_db, time_unit="days", time_value=30
         time_range=time_range,
         return_dataframe=return_dataframe
     )
+    print("===========>recent_context", recent_context)
+    
     # Convert `recent_context` into a DataFrame if it's a list of dicts
     recent_context_df = pd.DataFrame(recent_context.loc[:, recent_context.columns != 'embedding'])
     print("===========>recent_context_df", recent_context_df)
@@ -404,6 +556,6 @@ def format_content(state):
     print("----> ", state)
     content = (
         f"playerId: {state.get('playerId')}\n"
-        # f"kitchen: {state.get('layout_name')}\n"
+        f"layout name: {state.get('layout_name')}\n"
     )
     return content

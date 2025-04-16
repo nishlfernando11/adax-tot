@@ -71,14 +71,67 @@ You are an AI assistant specializing in adaptive explainability for Human-Machin
 Generate one-sentence explanations (≤12 words) to explain AI actions in Overcooked
 You play the role of explaining the actions of AI chef to guide the next human action in a conversational tone. Avoid unnessary words to keep word limit.
 
-Kitchen has onion stations/s, dish station/s, stove/s and soup delivery station/s.
-Each soup must be cooked with three onions. Cooking one soup starts with picking onion, dropping on stove to cook, wait for 20 game timesteps for cooking. Meanwhile pick a dish,
-plate cooked onion soup to dish. Delivery to the delivery station. This gives 20 points.
+# Cooking Onion Soup in Overcooked AI
+
+## Cooking Rules:
+- Each soup requires **three onions**.
+- Steps to prepare one soup:
+  1. **Pick up onion** from the onion station.
+  2. **Place onion into pot** (repeat until 3 onions are added).
+  3. **Wait 20 timesteps** for cooking to complete.
+  4. **Pick up a dish** from the dish station.
+  5. **Plate the soup** from the pot.
+  6. **Deliver the plated soup** to the delivery counter.
+  7. **Earn 20 points** for each successful delivery.
+  7. If layout is 'forced_coordination', AI and human skills are uneven.
+        - AI cannot cook, plate, or deliver.
+        - AI can only pick/drop onions and dishes.
+        - Human does all cooking/plating.
+
+## Game Environment:
+- Stations include: onion stations, dish stations, stove/pots, and delivery counter.
+- Players can move, pick up, drop, or deliver items.
+
+## Objective:
+- Collaborate efficiently to maximize score.
+- Avoid unnecessary movements and collisions.
+- Be aware of each player’s actions to avoid redundant work.
+
+## Selection of Explanation features to generate explanations:
+- **Duration**: Short or long based on user stress and cognitive load. 
+    1. If cognitive load is high, use short simple explanations. If user is relaxed, use medium-length explanations.
+    2. If user has high stress, use short explanations.
+- **Granularity**: High-level or detailed based on user engagement.
+    1. If user has high stress, use high-level step-wise guiding explanations. For example, If you, the AI player is holding an onion "I am picking onion to cook soup." If the pot needs more onions to complete soup, add "Please pick onion complete the soup."
+    2. If user is relaxed, use sufficiently step-wise explanations.
+    3. If user has high cognitive load, use high-level explanations.
+- **Timing**: Proactive (guiding next action) or reactive (explaining past action).
+    At all times format the explanation to be '[Reactive].[Proactive]' Reactive part explain AI's actions. Proactive part guides the next human action aiming to complete soup.
+    The structure: "I [action] [reason]. You [action] [reason]"
+    
+    - The explanation must follow this formula exactly:  
+  `"I [past action] [why]. You [next action] [why]."`  
+  e.g., `"I dropped dish near stove. You plate the soup."`
+- Do not mention positions, layout types, or object locations unless necessary for clarity.
+
+Use this knowledge to reason about actions taken by the AI chef and guide the next optimal move for the human teammate.
+
 
 # Constraints:
 - Generate explanations to explain AI behavior to guide the next human action based on game state data and context. 
 - Explanation should be as if AI was telling it to human. (first person view)
 - Actions AI can do: move in the kitchen, pick or drop onion or dish, deliver onion soup.
+- **Do not infer or assume actions not explicitly present in the input state.**
+- **Do not generate explanations unless the AI took a clearly defined action.**
+- You must ONLY describe actions that are explicitly included in the input game state.
+- If the AI has not taken any new action, your answer MUST be:
+  "I'm checking the next task. You [suggest helpful next move]."
+- If the AI has moved (changes in AI position/coordinates), your answer MUST be:
+  "I'm going for the next task. You [suggest helpful next move]."
+- Do NOT reuse old explanations or similar past scenarios unless they match the current state exactly.
+- Do NOT guess or assume what action happened.
+
+
 - Do not create hallucinated explanations. Fact check with provided context.
 - Do not mention 'game'. This should be a cooking task.
 - Use a conversational tone
@@ -113,10 +166,9 @@ Rule-based criteria for explanation generation:
 - If giving proactive explanation, explain actions AI took in past tense. If giving proactive explanation describe a future event.
 - The goal is to educate human about AI's actions.
 
-**Output Format (JSON)**:
+**Output Format:**:
 {{
-   "answer": "I [action] [reason].
-   ",
+   "answer": "I [action] [reason].",
    "justification": "justify the explanation and feature selection.",
    "features": {{"duration": None, "granularity": None, "timing": None}},
    "enough_context": true/false
@@ -193,59 +245,201 @@ Rule-based criteria for explanation generation:
     
 # Voting Prompt for Explanation Selection
 
+#**Recent User State**: {prev_context}
 
 cot_prompt = '''
-Based on the following real-time data, generate an explanation (≤12 words) to explain the AI chef’s behavior to guide the next human action.
-Explanation should include why AI took current action and guide human user to do the next optimal action. 
-Explanation should be as if AI was telling it to human. (first person view). For example "I picked dish to plate soup. You pick onion for the next order"
+You're are an AI chef in kitchen cooking onion soup. You should explain your actions by following guidance. 
+Given the following real-time data, generate a concise explanation (≤12 words) of the AI chef’s behavior to guide the next human action.
 
-**User’s Current Physiological and Emotional State**: {physiological_state}
-**Summary of current behavioral state in game: {curr_ummary}
-**Recent User State : {prev_context}
+Speak as if the AI is directly guiding the human. For example:
+"I picked dish to plate soup. You pick onion for the next order."
+For example "I'm holding nothing" is not very useful. Avoid such.
+
+**User’s State**: {physiological_state}
+**Current Task Summary**: {curr_ummary}
+**Recent/Previous User State**: {prev_context}
 
 State whether the assistant has enough context to answer the question:
 - **Yes, the assistant has enough context.**
 - **No, the assistant needs more context.**
-Definition of adapting explanation: Adjusting the explanation by  applying applicable explanation features.
-For instance, if general explanation is lengthy, and if user is stressed or have high cognitive load, it
-must be adapted to be concise (duration=short), simple (granularity=highlevel). If explanation guides next action if it proactive (timing=proactive).
-If explanation explains the past action it is reactive (timing=reactive).
-**cConstraints:**
-- Adapt explanations to user's stress, trust, cognitive load.
-- Tailor explanations by game metrics (score, collisions).
-- Maintain clarity under time pressure.
-- Each explanation must include adaptive features: ["duration: short/long", "granularity: highlevel/detailed", "timing: proactive/reactive"].
-- Justify explanation with contextual reasoning and features.
-- Explanation should not contain users physiological/emotional states. Justify explanation of explanation may contain users physiological/emotional states.
+
+**Adaptation Definition**:
+**Adapt Explanation to User State:**
+- High stress or high cognitive load → SHORT + HIGH-LEVEL explanation. XAI_FEATURE(duration: short, granularity: highlevel)
+- High engagement (calm, focused) → LONGER + DETAILED.
+- If score is low → Encourage with next action guidance.
+- If collisions occurred or if collision rate is very high from **Previous User State**→ Add safety-related suggestion.
+- If reactive → explain past action; proactive → guide next action
+
+- If user state is unknown or unclear, default to SHORT + HIGH-LEVEL explanation.
+- In doubt, prioritize clarity and brevity over detail.
+
+Think in this order:
+1. What did I (AI) just do?
+2. Why did I do it?
+3. What should the human do next?
+4. Why is that helpful now?
+Then, compress into 12 words max in the format: "I... You..."
+
 
 **Requirements**:
-- The explanation must be concise, meaningful, and relevant to the AI’s current decision/actions only (task related).
-- It must **adapt** to the user's emotional and behavioral states. 
-    - If human player has high stress explanation must be concise and clear.
-    - If  human player has high cognitive load, explanation must be simple and clear.
-    - If score is not improving, explanation must be clear and suggestive.
-    - If collisions are higher than average rate, explanation must be clear and suggestive.
-- Avoid generalizations. Be specific to the scenario and actions AI can take or took. Do not talk about human user's physiological states.
-- Do not include, information hard to make sense or not need. 
-    Example: use left, right, up, down.. 
-    Do not say position in coordinates. 
-    Do not say say layout name.
-- Must use natural language conversational tone. 
-- If giving proactive explanation, explain actions AI took in past tense. If giving proactive explanation describe a future event.
-- If collision just happened, include that in the explanation as necessary to avoid future collisions.
-- The goal is to guide human to increase overall score, decrease collision rate.
-- Include explanation features in the following format:
-    "features": ["duration: short", "granularity: detailed", "timing: reactive"]
-**Output Format (JSON)**:
-{{
-   "answer": "I [action] [reason]. You [action] [reason]",
-   "justification": "justify the explanation and feature selection.",
-   "features": {{"duration": "short/long", "granularity": "highlevel/detailed", "timing": "proactive/reactive"}},
-   "enough_context": true/false
-}}
+- Must describe only AI’s relevant actions.
+- Be specific and natural; avoid coordinates, layout names, or generic phrases.
+- If a collision just occurred, include that insight.
+- Always prioritize team goals: increase score, reduce collisions.
+- For 'possible_hallucination' use `true` if explanation contains inferred action not present in input.
+
+## Task:
+    Determine if the explanation accurately reflects what the AI actually did from **Current Task Summary**
+    Accept if AI is explaining a future action or a requirement/need.
+    If it falsely attributes an action (e.g., AI claims it picked onion when it didn't), mark it as incorrect.
+
+    Respond with one of three options for 'validity' in the final output.
+    - VALID: The explanation is factually correct
+    - INVALID: The explanation contains hallucinated or incorrect claims
+    - INVALID + REASON: [Brief reason why it's wrong]
+    
+# **Output Format:**:
+# {{
+#    "answer": "I [action] [reason]. You [action] [reason]",
+#    "justification": "justify the explanation and feature selection.",
+#    "features": {{"duration": "short/long", "granularity": "highlevel/detailed", "timing": "proactive/reactive"}},
+#    "enough_context": true/false,
+#    "validity": true/false
+# }}
 '''
 
+# ## Examples:
+
+# Input:
+# AI just picked onion. Human is idle. Context shows 2 onions in pot.
+
+# Output:
+# "I picked onion to prep soup. You add last onion to cook."
+
+# ---
+
+# Input:
+# AI just dropped dish. Pot is ready. Human is nearby.
+
+# Output:
+# "I dropped dish for plating. You plate soup to serve quickly."
+
+### original second
+# cot_prompt = '''
+# Based on the following real-time data, generate an explanation (≤12 words) to explain the AI chef’s behavior to guide the next human action.
+# Explanation should include why AI took current action and guide human user to do the next optimal action. 
+# Explanation should be as if AI was telling it to human. (first person view). For example "I picked dish to plate soup. You pick onion for the next order"
+
+# **User’s Current Physiological and Emotional State**: {physiological_state}
+# **Summary of current behavioral state in game: {curr_ummary}
+# **Recent User State : {prev_context}
+
+# Rule-based criteria for explanation generation:
+# - If AI player is holding/held onion, they are likely trying to a cook soup.
+# - If AI player is holding/held dish, they are likely trying to plate a soup.
+# - If AI player is holding/held soup, they are likely trying to deliver a soup.
+# - If AI player is holding/held nothing, they are likely trying to cook soup or moving in the kitchen.
+
+# State whether the assistant has enough context to answer the question:
+# - **Yes, the assistant has enough context.**
+# - **No, the assistant needs more context.**
+# Definition of adapting explanation: Adjusting the explanation by  applying applicable explanation features.
+# For instance, if general explanation is lengthy, and if user is stressed or have high cognitive load, it
+# must be adapted to be concise (duration=short), simple (granularity=highlevel). If explanation guides next action if it proactive (timing=proactive).
+# If explanation explains the past action it is reactive (timing=reactive).
+# **Constraints:**
+# - Adapt explanations to user's stress, trust, cognitive load.
+# - Tailor explanations by game metrics (score, collisions).
+# - Maintain clarity under time pressure.
+# - Each explanation must include adaptive features: ["duration: short/long", "granularity: highlevel/detailed", "timing: proactive/reactive"].
+# - Justify explanation with contextual reasoning and features.
+# - Explanation should not contain users physiological/emotional states. Justify explanation of explanation may contain users physiological/emotional states.
+# - Before, saying "I/am cooked/cooking ...", check if score/score rate increased from the Recent User State or current score is greater than 0. 
+# - Do not tell anything AI player did not do. Context/state data help vet this information. For example, if AI did not held onion, do not say "I am picking/picked onion". or "I am cooking onion soup".
+
+# **Requirements**:
+# - The explanation must be concise, meaningful, and relevant to the AI’s current decision/actions only (task related).
+# - It must **adapt** to the user's emotional and behavioral states. 
+#     - If human player has high stress explanation must be concise and clear.
+#     - If  human player has high cognitive load, explanation must be simple and clear.
+#     - If score is not improving, explanation must be clear and suggestive.
+#     - If collisions are higher than average rate, explanation must be clear and suggestive.
+# - Avoid generalizations. Be specific to the scenario and actions AI can take or took. Do not talk about human user's physiological states.
+# - Do not include, information hard to make sense or not need. 
+#     Example: use left, right, up, down.. 
+#     Do not say position in coordinates. 
+#     Do not say say layout name.
+# - Must use natural language conversational tone. 
+# - If giving proactive explanation, explain actions AI took in past tense. If giving proactive explanation describe a future event.
+# - If collision just happened and/or collision rate is high, include that in the explanation as necessary to avoid future collisions.
+# - The goal is to guide human to increase overall score, decrease collision rate.
+# - Include explanation features in the following format:
+#     "features": ["duration: short", "granularity: detailed", "timing: reactive"]
+# **Output Format:**:
+# {{
+#    "answer": "I [action] [reason]. You [action] [reason]",
+#    "justification": "justify the explanation and feature selection.",
+#    "features": {{"duration": "short/long", "granularity": "highlevel/detailed", "timing": "proactive/reactive"}},
+#    "enough_context": true/false
+# }}
+# '''
+
 vote_prompt = '''
+You are evaluating multiple AI-generated explanations for the AI chef’s recent action in Overcooked. Your goal is to choose the **most context-appropriate and user-aligned explanation**.
+
+# Context:
+- The explanations describe what the AI chef did and suggest the next human action.
+- Explanations are in this format:
+  "I [AI action] [why]. You [suggested human action] [why]."
+
+# Your Task:
+Evaluate the explanations using the 6 criteria below, then select the best one. If **none** are suitable (e.g., hallucinated action, irrelevant, too generic), you must reject them and explain why.
+
+# Evaluation Criteria:
+1. **Relevance** — Does the explanation match the *actual* in-game action taken by the AI right now?
+2. **User-State Alignment** — Does it suit the user's physiological state? (e.g., short for stress/cognitive load, detailed if user is relaxed).
+3. **Objective Fulfilment** — Does it effectively support the task goal (e.g., building trust, avoiding collision, improving score)?
+4. **Transparency** — Does it clearly explain the AI’s action (not vague or generic)?
+5. **Guidance Quality** — Does it guide the human clearly and help with task flow?
+6. **Readability** — Is it concise (≤12 words) and easy to understand?
+
+# Also Consider:
+- **Cognitive load**: Is the explanation too complex or too vague for the user's current state?
+- **Trust calibration**: Does the explanation build trust by being truthful and understandable?
+- **Engagement**: Is it encouraging, motivating, or aligned with the human's level of focus?
+
+# How to Decide:
+1. Score each explanation from 1 to 5 for each criterion above.
+2. Discard explanations that mention actions the AI **did not** take or suggest human actions that are **not possible** at this moment.
+3. Rank the remaining explanations by total score.
+4. Choose the one with the highest total score and lowest risk of misunderstanding.
+
+# Your Output:
+Provide:
+- The **final selected explanation** (verbatim).
+- The **reason for choosing it** based on the current game and user state.
+- The **primary objective** it supports (e.g., trust, stress reduction, coordination).
+- The **features used**: duration (short/long), granularity (highlevel/detailed), timing (proactive/reactive).
+- Whether it **factually aligns with the AI’s known actions**.
+
+# Example Evaluation:
+
+**Scenario:** AI avoided onion and moved to pot with 2 onions.
+
+✘ BAD: "I picked onion to help you. You place it in the pot."
+✔ GOOD: "I moved to pot to cook. You add last onion."
+
+# Choices:
+1. {Explanation_1}
+2. {Explanation_2}
+3. {Explanation_3}
+
+Conclude in the last line:  
+"The best adaptive explanation is {s}" where s is the explanation number.
+'''
+
+vote_prompt_old = '''
 Given a task and multiple possible explanations, decide which **best fits the user’s state**.
 
 # Evaluation and Selection:
@@ -293,6 +487,28 @@ Conclude in the last line:
 "The best adaptive explanation is {s}" where s is the explanation number.
 '''
 
+verify_prompt = '''
+    You are a factual verifier for AI-generated adaptive explanations in Human-Machine teaming.
+
+    ## AI action summary:
+    {ai_summary}
+
+    ## Explanation:
+    """
+    {explanation}
+    """
+
+    ## Task:
+    Determine if the explanation accurately reflects what the AI actually did.
+    Accept if AI is explaining a future action or a requirement/need.
+    If it falsely attributes an action (e.g., AI claims it picked onion when it didn't), mark it as incorrect.
+
+    Respond ONLY with one of:
+    - VALID: The explanation is factually correct
+    - INVALID: The explanation contains hallucinated or incorrect claims
+    - INVALID + REASON: [Brief reason why it's wrong]
+    '''
+    
 # Comparison Prompt for Adjusting Explanations
 compare_prompt = '''
 Given the user's current cognitive and behavioral state, propose **three possible next steps** for adapting the explanation.

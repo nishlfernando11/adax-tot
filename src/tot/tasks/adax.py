@@ -92,13 +92,17 @@ class AdaXTask(Task):
         # Current user and game state
         current_state = searchService.get_context_features(state)
         print("----->current_state", current_state)
-        recent_context = searchService.get_recent_context(current_state, vector_db, time_unit="seconds", time_value=5, return_dataframe=return_dataframe)
+        recent_context = searchService.get_recent_context(current_state, vector_db, time_unit="seconds", time_value=20, return_dataframe=return_dataframe)
         # context_df = searchService.get_context_df(current_state, recent_context_df)
         return recent_context
 
     @staticmethod
     def summarize_current_game(state: dict):
-        return searchService.summarize_full_context(state)
+        return searchService.summarize_full_context_detailed(state)
+    
+    @staticmethod
+    def standard_rule_based_explanation(state: dict):
+        return searchService.standard_rule_based_explanation(state)
     
     @staticmethod
     def standard_prompt_wrap(x: str, y: str = '', context = pd.DataFrame) -> str:
@@ -109,6 +113,14 @@ class AdaXTask(Task):
             # task_description=input_dict["task_description"],
             curr_ummary=context["current"]
             ) + y
+        
+    @staticmethod
+    def verify_prompt_wrap(ai_summary: str, explanation: str) -> str:
+        """Wraps the standard adaptive explanation prompt."""
+        return verify_prompt.format(
+            ai_summary=ai_summary,
+            explanation=explanation
+            )
 
     @staticmethod
     def cot_prompt_wrap(x: str, y: str = '', context = pd.DataFrame) -> str:
