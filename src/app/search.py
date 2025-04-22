@@ -556,6 +556,6 @@ def format_content(state):
     print("----> ", state)
     content = (
         f"playerId: {state.get('playerId')}\n"
-        f"layout name: {state.get('layout_name')}\n"
+        f"layout_name: {state.get('layout_name')}\n"
     )
     return content

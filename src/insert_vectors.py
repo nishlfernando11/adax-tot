@@ -49,7 +49,7 @@ def process_row(row, vec):
     import uuid
     import numpy as np
 
-    print("<-------->Processing row:", row)  # Debugging step
+    # print("Processing row:", row)  # Debugging step
 
     # --- Validate Explanation: Does AI mention a valid action? ---
     ai_summary = row.get("ai_action_summary", "").lower()

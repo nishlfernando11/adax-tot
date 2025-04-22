@@ -4,7 +4,7 @@ import backoff
 import ollama
 from openai import OpenAI
 from dotenv import load_dotenv
-from tot.prompts.adax import STATIC_KNOWLEDGE_BASE
+from src.tot.prompts.adax import STATIC_KNOWLEDGE_BASE
 load_dotenv(dotenv_path="./.env")
 completion_tokens = prompt_tokens = 0
 
@@ -26,7 +26,7 @@ def completions_with_backoff(**kwargs):
     # return openai.ChatCompletion.create(**kwargs)
     return client.chat.completions.create(**kwargs)
 
-def gpt(prompt, model="gpt-4", temperature=0.7, max_tokens=1100, n=1, stop=None, parallel=False) -> list:
+def gpt(prompt, model="gpt-4", temperature=0.7, max_tokens=3000, n=1, stop=None, parallel=False) -> list:
     messages = [{
                         "role": "system",
                         "content": STATIC_KNOWLEDGE_BASE

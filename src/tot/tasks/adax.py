@@ -3,7 +3,7 @@ import re
 import json
 import subprocess
 from tot.tasks.base import Task, DATA_PATH
-from tot.prompts.adax import *
+from src.tot.prompts.adax import *
 from tot.models import gpt
 from app import search as searchService
 import pandas as pd
@@ -91,7 +91,7 @@ class AdaXTask(Task):
         """Prepares the context features for generating adaptive explanations."""
         # Current user and game state
         current_state = searchService.get_context_features(state)
-        print("----->current_state", current_state)
+        print("Current_state: ", current_state)
         recent_context = searchService.get_recent_context(current_state, vector_db, time_unit="seconds", time_value=20, return_dataframe=return_dataframe)
         # context_df = searchService.get_context_df(current_state, recent_context_df)
         return recent_context
@@ -105,13 +105,33 @@ class AdaXTask(Task):
         return searchService.standard_rule_based_explanation(state)
     
     @staticmethod
+    def extract_layout_name(context):
+        """
+        Extracts the layout name from the 'current' field of a context dictionary.
+        
+        Args:
+            context (dict): A dictionary with a 'current' field containing the layout info.
+        
+        Returns:
+            str: The layout name, or None if not found.
+        """
+        current_str = context.get('current', '')
+        match = re.search(r'Layout:\s*([a-zA-Z_]+)', current_str)
+        if match:
+            return match.group(1)
+        return None
+
+
+    @staticmethod
     def standard_prompt_wrap(x: str, y: str = '', context = pd.DataFrame) -> str:
         """Wraps the standard adaptive explanation prompt."""
         input_dict = json.loads(x)
         # context_df = AdaXTask.prepare_context(input_dict)
         return standard_prompt.format(
             # task_description=input_dict["task_description"],
-            curr_ummary=context["current"]
+            curr_ummary=context["current"],
+            layout_description=AdaXTask.get_layout_prompt(context)
+
             ) + y
         
     @staticmethod
@@ -122,18 +142,23 @@ class AdaXTask(Task):
             explanation=explanation
             )
 
+    def get_layout_prompt(context):
+        layout_name = AdaXTask.extract_layout_name(context)
+        return layout_prompts.get(layout_name, "Layout information not found.")
+
     @staticmethod
-    def cot_prompt_wrap(x: str, y: str = '', context = pd.DataFrame) -> str:
+    def cot_prompt_wrap(x: str, y: str = '', context = pd.DataFrame, layout_name: str = '') -> str:
         """Wraps the Chain-of-Thought (CoT) adaptive explanation prompt."""
         input_dict = json.loads(x)
         # context_df = AdaXTask.prepare_context(input_dict)
-        
         return cot_prompt.format(
             # task_description=input_dict["task_description"],
             prev_context=context["prev"],
             curr_ummary=context["current"],
             physiological_state=input_dict["physiological_state"],
-            behavioral_state=input_dict["behavioral_state"]
+            behavioral_state=input_dict["behavioral_state"],
+            layout_description=AdaXTask.get_layout_prompt(context),
+            static_explanation=context["static_explanation"]
             ) + y
 
     @staticmethod
