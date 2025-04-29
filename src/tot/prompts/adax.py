@@ -84,6 +84,49 @@ plate cooked onion soup to dish. Delivery to the delivery station. This gives 20
 - Use a conversational tone
 """
 
+Cramped_KITCHEN = """
+Layout: Cramped Room. Kitchen with all stations accessible by both players.
+Stations: Shared 2 onion, 1 pot, 1 dish and 1 delivery stations.
+Skills: Both players can reach everything, but space is tight.
+Limitation: Easy collisions near central pot and delivery station. Clear role assignment reduces blocking.
+"""
+
+Asymmetric_Advantages_KITCHEN = """
+Layout: Asymmetric Advantages. Split kitchen with uneven access to key stations.
+Stations: 2 shared pots. Each gets 1 own onion, 1 dish and 1 delivery stations.
+Skills: Human can access onion/pot/dish easily; AI can reach dishes/pot/delivery faster.
+Limitation: Role-based division needed. Miscommunication leads to idle time or duplication.
+"""
+
+Coordination_Ring_KITCHEN = """
+Layout: Coordination Ring. Circular flow with evenly spaced stations. Middle long bench for passing items quickly.
+Stations: Shared onions → Dish → Pot → Delivery in clockwise order.
+Skills: Both players can access all stations equally.
+Limitation: Requires coordinated flow. Reversing direction or hesitations cause traffic and collisions.
+"""
+
+Forced_Coordination_KITCHEN = """
+Layout: Forced Coordination. Players start on opposite sides of a wall with limited pass zones.
+Stations: You (AI) get 2 onion, 1 dish stations on left of the wall. Human can access 2 Pots, 1 delivery on right.
+Skills: No player can complete soup alone. Onions and dishes must be passed from AI (yourself) to human player.
+Limitation: High dependency. Explanations must clearly direct passes and anticipate delays.
+"""
+
+Counter_Circuit_KITCHEN = """
+Layout: Counter Circuit. A long central counter separates players. Kitchen with all stations accessible by both players. Middle bench for passing items quickly or make long movements.
+Stations: Shared 1 2 onion, 2 pots, 1 dish and 1 delivery stations.
+Skills: Human and AI must coordinate around counter; crossing points are limited.
+Limitation: Requires planned handoffs. Misalignment causes movement loops or wasted effort.
+"""
+
+layout_prompts = {
+    "counter_circuit": Counter_Circuit_KITCHEN,
+    "forced_coordination": Forced_Coordination_KITCHEN,
+    "cramped_room": Cramped_KITCHEN,
+    "asymmetric_advantages": Asymmetric_Advantages_KITCHEN,
+    "coordination_ring": Coordination_Ring_KITCHEN
+}
+
 
 # Standard Prompt for Explanation Generation
 standard_prompt = '''
@@ -199,9 +242,27 @@ Based on the following real-time data, generate an explanation (≤12 words) to 
 Explanation should include why AI took current action and guide human user to do the next optimal action. 
 Explanation should be as if AI was telling it to human. (first person view). For example "I picked dish to plate soup. You pick onion for the next order"
 
-**User’s Current Physiological and Emotional State**: {physiological_state}
-**Summary of current behavioral state in game: {curr_ummary}
-**Recent User State : {prev_context}
+## Objective:
+- Collaborate efficiently to maximize score.
+- Avoid unnecessary movements and collisions.
+- Be aware of each player’s actions to avoid redundant work when guiding.
+
+Given the following real-time data, generate a concise explanation (≤12 words) of the AI chef’s behavior to guide the next human action.
+
+Speak as if the AI is directly guiding the human. For example:
+"I picked dish to plate soup. You pick onion for the next order."
+Do not say "holding nothing".
+
+##States
+**User’s State**: {physiological_state}
+**Current Task Summary**: {curr_ummary}
+**Recent/Previous User State**: {prev_context}
+**Layout description**: {layout_description}
+**Static Explanation**: {static_explanation}
+
+First, analyze all States to understand the context. Static explanation gives cues. Then detemine the next best actions for the AI and human players. Consider Layout description/skill limitations.
+##Summary: ".."
+Movements of AI player: True if position/cooridinates or where AI player is at are different in **Recent/Previous User State** and **Current Task Summary**.
 
 State whether the assistant has enough context to answer the question:
 - **Yes, the assistant has enough context.**
@@ -219,30 +280,31 @@ If explanation explains the past action it is reactive (timing=reactive).
 - Explanation should not contain users physiological/emotional states. Justify explanation of explanation may contain users physiological/emotional states.
 
 **Requirements**:
-- The explanation must be concise, meaningful, and relevant to the AI’s current decision/actions only (task related).
-- It must **adapt** to the user's emotional and behavioral states. 
-    - If human player has high stress explanation must be concise and clear.
-    - If  human player has high cognitive load, explanation must be simple and clear.
-    - If score is not improving, explanation must be clear and suggestive.
-    - If collisions are higher than average rate, explanation must be clear and suggestive.
-- Avoid generalizations. Be specific to the scenario and actions AI can take or took. Do not talk about human user's physiological states.
-- Do not include, information hard to make sense or not need. 
-    Example: use left, right, up, down.. 
-    Do not say position in coordinates. 
-    Do not say say layout name.
-- Must use natural language conversational tone. 
-- If giving proactive explanation, explain actions AI took in past tense. If giving proactive explanation describe a future event.
-- If collision just happened, include that in the explanation as necessary to avoid future collisions.
-- The goal is to guide human to increase overall score, decrease collision rate.
-- Include explanation features in the following format:
-    "features": ["duration: short", "granularity: detailed", "timing: reactive"]
-**Output Format (JSON)**:
-{{
-   "answer": "I [action] [reason]. You [action] [reason]",
-   "justification": "justify the explanation and feature selection.",
-   "features": {{"duration": "short/long", "granularity": "highlevel/detailed", "timing": "proactive/reactive"}},
-   "enough_context": true/false
-}}
+- Must describe only AI’s relevant actions.
+- Be specific and natural; avoid coordinates, layout names, or generic phrases.
+- If a collision just occurred, include that insight.
+- Always prioritize team goals: increase score, reduce collisions.
+- For 'possible_hallucination' use `true` if explanation contains inferred action not present in input.
+
+## Validation:
+    Determine if the explanation accurately reflects what the AI actually did from **Current Task Summary**
+    Accept if AI is explaining a future action or a requirement/need.
+    If it falsely attributes an action (e.g., AI claims it picked onion when it didn't), mark it as incorrect.
+
+    Options for 'validity' in the final output.
+    - VALID: The explanation is factually correct
+    - INVALID: The explanation contains hallucinated or incorrect claims
+    - INVALID + REASON: [Brief reason why it's wrong]   
+  If the explanation is not VALID, retry once to provide a valid explanation. 
+
+# **Output Format:**:
+# {{
+#    "answer": "I [action] [reason]. You [action] [reason]",
+#    "justification": "justify the explanation and feature selection.",
+#    "features": {{"duration": "short/long", "granularity": "highlevel/detailed", "timing": "proactive/reactive"}},
+#    "enough_context": true/false,
+#    "validity": true/false
+# }}
 '''
 
 vote_prompt = '''
