@@ -499,32 +499,10 @@ def get_adax_explanation(behavioral_data, physio_inference, timestamp, model_out
     
     task.set_data([{"timestamp": timestamp, "behavioral_state": behavioral_data, "physiological_state": physio_inference}])
 
-    # Optional: during the delay send a static explanation
-    # static_explanation = task.standard_rule_based_explanation(behavioral_data)
-    # if static_explanation:
-    #     sio.emit('xai_message', {
-    #         'explanation': static_explanation,
-    #         'xai_agent_type': xai_agent_type,
-    #         'fallback': True  # optional flag to show it's static
-    #     })
     print_green("Starting explanation generation...")
     start = time.time()
     ys, infos = solve(args, task, 0, vector_db=vec, parallel=True, xai_agent_type='AdaX')
     print("⏱ solve() time:", round(time.time() - start, 2), "s")
-    
-    # print(infos)
-    # print(ys)
-    # # Fix escaped underscore in the JSON string
-    # fixed_json_str = re.sub(r'\\\\_', '_', ys[0]).replace("True", "true").replace("False", "false").replace("None", "null")
-    # print(fixed_json_str)
-    # # Now parse the fixed JSON
-    # parsed_data = json.loads(fixed_json_str)
-    # print("parsed_data", parsed_data)
-    # print("\n\n=========================================\n")
-    # print(f"Best explanation: {parsed_data['answer']}")
-    # print(f"Features used: {parsed_data['features']}") 
-    # print(f"enough_context: {parsed_data['enough_context']}")
-    # print("\n=========================================\n\n")
     
     static_explanation = task.standard_rule_based_explanation(behavioral_data)
 
@@ -540,7 +518,8 @@ def get_adax_explanation(behavioral_data, physio_inference, timestamp, model_out
     vec.upsert(rag_record)
     
     save_metrics_data(behavioral_data, behavioral_data.get("playerId"), model_output)
-def get_adax_explanation(behavioral_data, physio_inference, timestamp, model_output):
+    
+def get_adax_explanation_old(behavioral_data, physio_inference, timestamp, model_output):
     #TODO: Use held object and player information in the prompt
     # args = argparse.Namespace(backend='mistral:7b-instruct-q4_0', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=True, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
     args = argparse.Namespace(backend='gpt-4.1-mini', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=False, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
