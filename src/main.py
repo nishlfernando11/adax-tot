@@ -1320,8 +1320,8 @@ if __name__ == '__main__':
         
     # Start LSL stream listener
     threading.Thread(target=stream_ecg, daemon=True).start()
-    # threading.Thread(target=stream_eeg, daemon=True).start()
-    # threading.Thread(target=stream_metrics, daemon=True).start()
+    threading.Thread(target=stream_eeg, daemon=True).start()
+    threading.Thread(target=stream_metrics, daemon=True).start()
     threading.Thread(target=stream_game, daemon=True).start()
     # threading.Thread(target=run_lsl_logger, daemon=True).start()
     threading.Thread(target=process_and_explain, daemon=True).start()
