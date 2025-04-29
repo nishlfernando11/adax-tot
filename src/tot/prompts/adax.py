@@ -90,14 +90,14 @@ Then, compress into 12 words max in the format: "I... You..."
 
 Cramped_KITCHEN = """
 Layout: Cramped Room. Kitchen with all stations accessible by both players.
-Stations: Shared Onion, pot, dish and delivery.
+Stations: Shared 2 onion, 1 pot, 1 dish and 1 delivery stations.
 Skills: Both players can reach everything, but space is tight.
 Limitation: Easy collisions near central pot and delivery station. Clear role assignment reduces blocking.
 """
 
 Asymmetric_Advantages_KITCHEN = """
 Layout: Asymmetric Advantages. Split kitchen with uneven access to key stations.
-Stations: Two shared pots. Own onion, dish and delivery stations.
+Stations: 2 shared pots. Each gets 1 own onion, 1 dish and 1 delivery stations.
 Skills: Human can access onion/pot/dish easily; AI can reach dishes/pot/delivery faster.
 Limitation: Role-based division needed. Miscommunication leads to idle time or duplication.
 """
@@ -111,14 +111,14 @@ Limitation: Requires coordinated flow. Reversing direction or hesitations cause 
 
 Forced_Coordination_KITCHEN = """
 Layout: Forced Coordination. Players start on opposite sides of a wall with limited pass zones.
-Stations: Onions, dish left of the wall. Pots, delivery right.
-Skills: No player can complete soup alone. Onions, dishes must be passed from AI to human player.
+Stations: You (AI) get 2 onion, 1 dish stations on left of the wall. Human can access 2 Pots, 1 delivery on right.
+Skills: No player can complete soup alone. Onions and dishes must be passed from AI (yourself) to human player.
 Limitation: High dependency. Explanations must clearly direct passes and anticipate delays.
 """
 
 Counter_Circuit_KITCHEN = """
-Layout: Counter Circuit. A long central counter separates players. Kitchen with all stations accessible by both players. Middle bench for passing items quickly.
-Stations: Shared Onions, pots, dish and delivery.
+Layout: Counter Circuit. A long central counter separates players. Kitchen with all stations accessible by both players. Middle bench for passing items quickly or make long movements.
+Stations: Shared 1 2 onion, 2 pots, 1 dish and 1 delivery stations.
 Skills: Human and AI must coordinate around counter; crossing points are limited.
 Limitation: Requires planned handoffs. Misalignment causes movement loops or wasted effort.
 """
@@ -195,7 +195,7 @@ Do not say "holding nothing".
 **Layout description**: {layout_description}
 **Static Explanation**: {static_explanation}
 
-First, analyze all States to understand the context. Static explanation gived cues. Then detemine the next best actions for the AI and human players. Consider layout/skill limitations.
+First, analyze all States to understand the context. Static explanation gives cues. Then detemine the next best actions for the AI and human players. Consider Layout description/skill limitations.
 ##Summary: ".."
 Movements of AI player: True if position/cooridinates or where AI player is at are different in **Recent/Previous User State** and **Current Task Summary**.
 
@@ -209,7 +209,18 @@ State whether the assistant has enough context to answer the question:
 - If a collision just occurred, include that insight.
 - Always prioritize team goals: increase score, reduce collisions.
 - For 'possible_hallucination' use `true` if explanation contains inferred action not present in input.
-    
+
+## Validation:
+    Determine if the explanation accurately reflects what the AI actually did from **Current Task Summary**
+    Accept if AI is explaining a future action or a requirement/need.
+    If it falsely attributes an action (e.g., AI claims it picked onion when it didn't), mark it as incorrect.
+
+    Options for 'validity' in the final output.
+    - VALID: The explanation is factually correct
+    - INVALID: The explanation contains hallucinated or incorrect claims
+    - INVALID + REASON: [Brief reason why it's wrong]   
+  If the explanation is not VALID, retry once to provide a valid explanation. 
+
 # **Output Format:**:
 # {{
 #    "answer": "I [action] [reason]. You [action] [reason]",

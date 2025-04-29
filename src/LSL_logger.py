@@ -179,7 +179,7 @@ def run_lsl_logger():
         globals()['logger_started'] = False
 
 # This function can be triggered by your socket event
-def on_start_ecg(data):
+def on_start_sensors(data):
     global player_id, round_id, logger_started
     print("Start ecg data", json.dumps(data))
     player_id = data.get("start_info", {}).get("player_id", "unknown")
@@ -191,7 +191,7 @@ def on_start_ecg(data):
         threading.Thread(target=run_lsl_logger, daemon=True).start()
 
 # This function can be triggered by a socket event to stop logging
-def on_stop_ecg():
+def on_stop_sensors():
     global logger_stop_event
     print("Stopping ECG logging...")
     logger_stop_event.set()

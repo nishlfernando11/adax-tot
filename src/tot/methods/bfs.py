@@ -53,6 +53,7 @@ def get_values(task, x, ys, n_evaluate_sample, cache_value=True):
 
 def get_votes(task, x, ys, n_evaluate_sample, is_local):
     vote_prompt = task.vote_prompt_wrap(x, ys)
+    print("==vote_prompt==", vote_prompt)
     if is_local:
         vote_outputs = local_model(vote_prompt, n=n_evaluate_sample, stop=None)
     else:    
