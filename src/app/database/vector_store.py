@@ -100,7 +100,7 @@ class VectorStore:
 
         records = df.to_records(index=False)
 
-        print(list(records))
+        # print(list(records))
         # records = [(item[0], json.dumps(item[1]), item[2])  # Ensure metadata is a string
                         # for item in list(records)]
         # print(records)
@@ -184,8 +184,9 @@ class VectorStore:
         results = self.vec_client.search(query_embedding, **search_args)
         elapsed_time = time.time() - start_time
 
+        print(f"Vector search completed in {elapsed_time:.3f} seconds")
         logging.info(f"Vector search completed in {elapsed_time:.3f} seconds")
-
+        print(f"Found {len(results)} results")
         if return_dataframe:
             return self._create_dataframe_from_results(results)
         else:

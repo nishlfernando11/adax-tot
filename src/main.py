@@ -1,18 +1,21 @@
 import time
 import pylsl
-from pylsl import StreamInlet, resolve_byprop, proc_ALL
+from pylsl import StreamInlet, resolve_byprop
 import json
+import csv
+import os
+import logging
+import re
+import sys
+
 import pandas as pd
 from datetime import datetime
-import re
 import socketio
 import threading
 from collections import deque
 import argparse
 from dotenv import load_dotenv
-import os
 import numpy as np
-
 from tot.methods.bfs import solve
 from tot.methods.standard import genAdaX
 from tot.tasks.adax import AdaXTask
@@ -165,21 +168,28 @@ def on_start_sensors(data):
         xai_agent_type = 'StaticX'
     else:
         xai_agent_type = 'NoX'
+        
+    current_uid = start_info.get("uid", None) 
+    current_round_id = start_info.get("round_id", None)  
     
     print_green(f"{xai_agent_type} agent type detected")
-    eeg_inlet = safe_resolve('Emotiv_EEG')
-    print("eeg_inlet", eeg_inlet)
-    buffer_eeg_data(eeg_inlet)
+    # eeg_inlet = safe_resolve('Emotiv_EEG')
+    # print("eeg_inlet", eeg_inlet)
+    # buffer_eeg_data(eeg_inlet)
     
 @sio.on('stop_sensors')
 def on_end_sensors(data):
     print_green("Ending data collection ")
+    global current_uid
+    current_uid = None # reset
     # print_green("Ending data collection "+ json.dumps(data))
     
 
 @sio.event
 def disconnect():
     print("Disconnected from server")
+    socket_connected.clear()
+    threading.Thread(target=retry_socket_connection).start()
     
 # utility function to parse the behavioral state
 def parse_behavioral_state(raw_behavioral_state):
@@ -377,7 +387,9 @@ def map_state_and_features_to_output_old(game_data, physio_inference, adax_featu
     score_rate = round(score / time_elapsed, 2)
     layout_name = game_data.get("layout_name", "unknown")
 
+    # TODO: ADD UID, round_id, etc. to the output
     output = {
+        "timestep": game_data.get("timestep", 0),
         "playerId": playerId,
         "score": score,
         "trust": physio_data.get("trust", "unknown"),
@@ -400,9 +412,9 @@ def map_state_and_features_to_output_old(game_data, physio_inference, adax_featu
 
 def buffer_eeg_data(eeg_inlet=None):
 
-    lsl_start_time = pylsl.local_clock()
-    unix_start_time = time.time()
-    lsl_to_unix_offset = unix_start_time - lsl_start_time
+    # lsl_start_time = pylsl.local_clock()
+    # unix_start_time = time.time()
+    # lsl_to_unix_offset = unix_start_time - lsl_start_time
     eeg_offset = safe_time_correction(eeg_inlet, "Emotiv_EEG")
     # eeg_buffer = []
     # if eeg_inlet: 
@@ -431,11 +443,12 @@ def buffer_eeg_data(eeg_inlet=None):
         else:
             is_data_available = False
             print("No data available, waiting...") 
+            time.sleep(0.5)  # let CPU rest briefly
             
             
-def get_static_explanation(behavioral_data, physio_inference, timestamp):
+def get_static_explanation(behavioral_data, physio_inference, timestamp, model_output):
     # Todo: get contextual explanation without considering any state information
-    args = argparse.Namespace(backend='gpt-3.5-turbo', temperature=0.7, task='adax', xai_agent_type='StaticX', is_local=False, naive_run=False, prompt_sample="standard", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=1, n_evaluate_sample=1, n_select_sample=1, return_dataframe=True)
+    # args = argparse.Namespace(backend='gpt-3.5-turbo', temperature=0.6, task='adax', xai_agent_type='StaticX', is_local=False, naive_run=False, prompt_sample="standard", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=1, n_evaluate_sample=1, n_select_sample=1, return_dataframe=True)
     
     task = AdaXTask(vector_db=vec)
 
@@ -499,58 +512,72 @@ def get_adax_explanation(behavioral_data, physio_inference, timestamp, model_out
     ys, infos = solve(args, task, 0, vector_db=vec, parallel=True, xai_agent_type='AdaX')
     print("⏱ solve() time:", round(time.time() - start, 2), "s")
     
-    print(infos)
-    print(ys)
-    # Fix escaped underscore in the JSON string
-    fixed_json_str = re.sub(r'\\\\_', '_', ys[0]).replace("True", "true").replace("False", "false").replace("None", "null")
-    print(fixed_json_str)
-    # Now parse the fixed JSON
-    parsed_data = json.loads(fixed_json_str)
-    print("parsed_data", parsed_data)
-    print("\n\n=========================================\n")
-    print(f"Best explanation: {parsed_data['answer']}")
-    print(f"Features used: {parsed_data['features']}") 
-    print(f"enough_context: {parsed_data['enough_context']}")
-    print("\n=========================================\n\n")
-
-    if parsed_data['answer']:
-        sio.emit('xai_message', {'explanation': parsed_data['answer'],  'xai_agent_type': xai_agent_type})
-    else:
-        sio.emit('xai_message', {'explanation': 'I am cooking onion soup. Work with me to cook more dishes.', 'xai_agent_type': xai_agent_type})
+    # print(infos)
+    # print(ys)
+    # # Fix escaped underscore in the JSON string
+    # fixed_json_str = re.sub(r'\\\\_', '_', ys[0]).replace("True", "true").replace("False", "false").replace("None", "null")
+    # print(fixed_json_str)
+    # # Now parse the fixed JSON
+    # parsed_data = json.loads(fixed_json_str)
+    # print("parsed_data", parsed_data)
+    # print("\n\n=========================================\n")
+    # print(f"Best explanation: {parsed_data['answer']}")
+    # print(f"Features used: {parsed_data['features']}") 
+    # print(f"enough_context: {parsed_data['enough_context']}")
+    # print("\n=========================================\n\n")
     
-    #TODO: save entry to RAG
-    formatted_data = map_state_and_features_to_output(behavioral_data, physio_inference, parsed_data)
+    static_explanation = task.standard_rule_based_explanation(behavioral_data)
+
+    if static_explanation:
+        sio.emit('xai_message', {'explanation': static_explanation,  'xai_agent_type': xai_agent_type})
+    else:
+        sio.emit('xai_message', {'explanation': 'I am cooking onion soup.', 'xai_agent_type': xai_agent_type})
+
+    formatted_data = map_state_and_features_to_output(behavioral_data, physio_inference, {})
     # print("Formatted data:", formatted_data)
     rag_record = process_row(formatted_data, vec)
     # print("RAG record:", rag_record)
     vec.upsert(rag_record)
-
     
-def get_adax_explanation(behavioral_data, physio_inference, timestamp):
+    save_metrics_data(behavioral_data, behavioral_data.get("playerId"), model_output)
+def get_adax_explanation(behavioral_data, physio_inference, timestamp, model_output):
     #TODO: Use held object and player information in the prompt
-    # args = argparse.Namespace(backend='mistral:7b-instruct-q4_0', temperature=0.6, task='adax', is_local=True, naive_run=False, prompt_sample="cot" method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, stop=None)
-    args = argparse.Namespace(backend='gpt-3.5-turbo', temperature=0.7, task='adax', xai_agent_type='AdaX', is_local=False, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
-    
+    # args = argparse.Namespace(backend='mistral:7b-instruct-q4_0', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=True, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
+    args = argparse.Namespace(backend='gpt-4.1-mini', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=False, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
+    #gpt-4.1-mini
+    #gpt-3.5-turbo
     task = AdaXTask(vector_db=vec)
-
-    task.set_data([{"timestamp": timestamp, "behavioral_state": behavioral_data, "physiological_state": physio_inference}])
-    ys, infos = solve(args, task, 0, vector_db=vec, parallel=True)
     
-    print(infos)
-    print(ys)
+    task.set_data([{"timestamp": timestamp, "behavioral_state": behavioral_data, "physiological_state": physio_inference}])
+
+    # Optional: during the delay send a static explanation
+    static_explanation = task.standard_rule_based_explanation(behavioral_data)
+    if static_explanation:
+        sio.emit('xai_message', {
+            'explanation': static_explanation,
+            'xai_agent_type': xai_agent_type,
+            'fallback': True  # optional flag to show it's static
+        })
+    print_green("Starting explanation generation...")
+    start = time.time()
+    ys, infos = solve(args, task, 0, vector_db=vec, parallel=True)
+    print("⏱ solve() time:", round(time.time() - start, 2), "s")
+    
+    # print(infos)
+    # print(ys)
     # Fix escaped underscore in the JSON string
     fixed_json_str = re.sub(r'\\\\_', '_', ys[0]).replace("True", "true").replace("False", "false")
-    print(fixed_json_str)
+    # print(fixed_json_str)
     # Now parse the fixed JSON
     parsed_data = json.loads(fixed_json_str)
-    print(parsed_data)
-    print("\n\n=========================================\n")
-    print(f"Best explanation: {parsed_data['answer']}")
-    print(f"Features used: {parsed_data['features']}") 
-    print(f"enough_context: {parsed_data['enough_context']}")
-    print("\n=========================================\n\n")
+    # print(parsed_data)
+    print_green("\n\n=========================================\n")
+    print_green(f"Best explanation: {parsed_data['answer']}")
+    print_green(f"Features used: {parsed_data['features']}") 
+    print_green(f"enough_context: {parsed_data['enough_context']}")
+    print_green("\n=========================================\n\n")
 
-    sio.emit('xai_message', {'explanation': parsed_data['answer'],  'xai_agent_type': xai_agent_type})
+    sio.emit('xai_message', {'explanation': str(parsed_data['answer']),  'xai_agent_type': xai_agent_type})
     
     #TODO: save entry to RAG
     formatted_data = map_state_and_features_to_output(behavioral_data, physio_inference, parsed_data)
@@ -558,13 +585,54 @@ def get_adax_explanation(behavioral_data, physio_inference, timestamp):
     rag_record = process_row(formatted_data, vec)
     # print("RAG record:", rag_record)
     vec.upsert(rag_record)
-    
-# ========== Buffers ==========
-ecg_buffer = deque(maxlen=256 * 10)        # 10 seconds of ECG @ 256Hz
-game_buffer = deque(maxlen=6 * 10)        # 10 seconds of game data @ 6Hz
-# eeg_buffer = deque(maxlen=256 * 10)        # 10 seconds of EEG @ 256Hz
-eeg_buffer = np.zeros((32, 0))  # shape: (channels, time_steps)
+    save_metrics_data(behavioral_data, behavioral_data.get("playerId"), model_output)
 
+def save_metrics_data(behavioral_data, playerId, model_output): 
+    print_red("met_buffer ")
+    print(met_buffer)
+    print("behavioral_data")
+    print_cyan(behavioral_data)
+    if len(met_buffer) == 0:
+        print_red("No metrics data to save")
+    #save met data and stress model data into csv
+    with met_buffer_lock:
+        for entry in met_buffer:
+            if isinstance(entry, tuple) and len(entry) == 2:
+                timestamp, sample = entry
+                sample_obj = {
+                    "timestamp": timestamp,
+                    "player_id": playerId,
+                    "round_id": current_round_id,
+                    "uid": current_uid,
+                    "type": "met",
+                    "data": dict(zip(met_labels, sample))
+                }
+                write_sample(sample_obj)
+            else:
+                print(f"Invalid entry in met_buffer: {entry}")
+        # clear buffer
+        met_buffer.clear()
+    # for (timestamp, sample) in met_buffer:
+    #     sample_obj = {
+    #         "timestamp": timestamp,
+    #         "player_id": playerId,
+    #         "round_id": behavioral_data.get("round_id"),
+    #         "uid": current_uid,
+    #         "type": "met",
+    #         "data": dict(zip(met_labels, sample))
+    #     }
+    #     write_sample(sample_obj)
+    # Write model prediction
+    sample_obj = {
+        "timestamp": model_output.get("timestamp"),
+        "player_id": playerId,
+        "round_id": current_round_id,
+        "uid": current_uid,
+        "type": "model",
+        "data": model_output
+    }
+    write_sample(sample_obj)
+    
 # ========== Stream Threads ==========
 # def stream_ecg():
 #     print("Resolving ECG stream...")
@@ -578,6 +646,83 @@ eeg_buffer = np.zeros((32, 0))  # shape: (channels, time_steps)
 
 def stream_ecg():
     inlet = None
+    global ecg_buffer
+
+    while True:
+        try:
+            if inlet is None:
+                print("🔄 Resolving ECG stream...")
+                streams = resolve_byprop('name', 'EQ_ECG_Stream', timeout=5)
+                if not streams:
+                    print_red("❌ ECG stream not found. Retrying in 3s...")
+                    time.sleep(3)
+                    continue
+                print_green("ECG stream found!")
+                print(streams[0])
+                inlet = StreamInlet(streams[0])
+                print_green("✅ ECG stream connected!")
+                print(inlet.info())
+
+            # sample, timestamp = inlet.pull_sample(timeout=1.0)
+            # if sample:
+            #     ecg_buffer.append((timestamp, sample))
+                
+            sample, timestamp = inlet.pull_sample(timeout=1.0)
+            # print("📥 ECG raw sample:", sample)
+            if sample:
+                try:
+                    if isinstance(sample[0], dict):
+                        json_sample = sample[0]
+                    elif isinstance(sample[0], str):
+                        json_sample = json.loads(sample[0])
+                    else:
+                        print_red(f"⚠️ Unsupported sample format: {type(sample[0])}, sample: {sample}")
+                        continue
+                except Exception as e:
+                    print_red("❌ Failed to parse ECG sample")
+                    import traceback; traceback.print_exc()
+                    continue
+                new_sample = np.array([json_sample['lead_one_mv'], json_sample['lead_two_mv']]).reshape(2, 1)
+                ecg_buffer = np.hstack((ecg_buffer, new_sample))
+                with ecg_buffer_lock:
+                    ecg_buffer = np.hstack((ecg_buffer, new_sample))
+                    # print_cyan(f"✅ ECG buffer updated: {ecg_buffer.shape}")
+                
+            # ecg_sample, timestamp = inlet.pull_sample(timeout=1.0)
+            # if ecg_sample:
+            #     print("📥 Raw ECG Sample:", ecg_sample)
+            #     try:
+            #         # Check format
+            #         if isinstance(ecg_sample[0], dict):
+            #             json_sample = ecg_sample[0]
+            #         elif isinstance(ecg_sample[0], str):
+            #             json_sample = json.loads(ecg_sample[0])
+            #         else:
+            #             raise ValueError("Invalid ECG sample format")
+
+            #         new_sample = np.array([json_sample['lead_one_mv'], json_sample['lead_two_mv']]).reshape(2, 1)
+
+            #         with ecg_buffer_lock:
+            #             ecg_buffer = np.hstack((ecg_buffer, new_sample))
+            #             print_cyan(f"✅ ECG buffer updated: {ecg_buffer.shape}")
+
+            #     except Exception as e:
+            #         print_red(f"❌ Failed to parse ECG sample: {e}")
+            #         import traceback; traceback.print_exc()
+
+        except RuntimeError as e:
+            print_yellow(f"⚠️ ECG stream lost: {e}")
+            inlet = None
+            time.sleep(3)
+        except Exception as e:
+            print_red(f"❌ Unexpected ECG error: {e}")
+            import traceback; traceback.print_exc()
+            inlet = None
+            time.sleep(3)
+
+
+def stream_ecg_old():
+    inlet = None
 
     while True:
         try:
@@ -590,6 +735,7 @@ def stream_ecg():
                     continue
                 inlet = StreamInlet(streams[0])
                 print_green("✅ ECG stream connected!")
+            print(inlet.info())
 
             sample, timestamp = inlet.pull_sample(timeout=1.0)
             if sample:
@@ -699,7 +845,7 @@ def stream_eeg():
         try:
             if inlet is None:
                 print("🔄 Resolving EEG stream...")
-                streams = resolve_byprop('name', 'EQ_EEG_Stream', timeout=5)
+                streams = resolve_byprop('name', 'Emotiv_EEG', timeout=5)
                 if not streams:
                     print_red("❌ EEG stream not found. Retrying in 3s...")
                     time.sleep(3)
@@ -941,10 +1087,26 @@ def get_physiometrics(model_output):
     physio_inference = map_emotions_to_trust_stress(model_output)
     return physio_inference
 
+# REQUIRED_SIZE = 256  # 256Hz * 1 seconds
+
+# # Trim or pad the data
+# def fix_buffer_size(eeg_buffer, target_size=REQUIRED_SIZE):
+#     print("fix_buffer_size")
+#     print("eeg_buffer shape:", eeg_buffer.shape)
+#     current_size = eeg_buffer.shape[1]
+#     if current_size > target_size:
+#         eeg_buffer = eeg_buffer[:, :target_size]  # truncate
+#     elif current_size < target_size:
+#         pad_width = target_size - current_size
+#         eeg_buffer = np.pad(eeg_buffer, ((0,0), (0,pad_width)), mode='constant')
+#     print("new eeg_buffer shape:", eeg_buffer.shape)
+#     return eeg_buffer
+
+
 # ========== Processing Loop ==========
-def process_and_explain(physio_window=1.0):
+def process_and_explain(physio_window=5.0):
     print("🧠 Starting explanation engine...")
-    global isGameOn
+    global isGameOn, ecg_buffer, eeg_buffer
 
     while True:
         if not isGameOn:
@@ -959,13 +1121,12 @@ def process_and_explain(physio_window=1.0):
                 time.sleep(0.05)
                 continue
             print_cyan(f"\nGame buffer: {len(game_buffer)}")
-            print_cyan(f"\ECG buffer: {len(ecg_buffer)}")
-            game_ts, game_state = game_buffer[-1]
+            game_ts, game_state = game_buffer[-1] #extract the last game state
             print_cyan(f"\nGame state: {game_state}")
 
-            ecg_window = [s for t, s in ecg_buffer if game_ts - physio_window <= t <= game_ts]
+            # ecg_window = [s for t, s in ecg_buffer if game_ts - physio_window <= t <= game_ts]
             # eeg_window = [s for t, s in eeg_buffer if game_ts - physio_window <= t <= game_ts]
-            print("ECG window:", ecg_window)
+            # print("ECG window:", {len(ecg_window)})
             # print("EEG window:", eeg_window)
 
             # TODO: get real ECG/EEG data and preprocess
@@ -996,23 +1157,67 @@ def process_and_explain(physio_window=1.0):
             #             }
             #         }
             model_output = {
+                "timestamp": time.time(),
                 "probabilities" :{
                         "excitement": 0.25,
                         "stress": 0.25,
                         "depression": 0.25,
                         "relaxation": 0.25
                         }}
-            global eeg_buffer
-            if eeg_buffer.shape[1] == 256*5:
+            print_cyan(f"\EEG buffer shape: {eeg_buffer.shape[1]}")
+            print_cyan(f"\ECG buffer shape: {ecg_buffer.shape[1]}")
+            
+            if eeg_buffer.shape[1] >= 256 and ecg_buffer.shape[1] >= 256: 
+                # predict stress level from ecg and eeg
+                # with eeg_buffer_lock and ecg_buffer_lock:
+                print_cyan(f"\nEEG buffer shape: {eeg_buffer.shape[1]}")
+                # print_cyan(f"\nECG buffer shape: {ecg_buffer.shape[1]}")
+                # Before sending data
+                # if eeg_buffer.shape[1] >= 256 and ecg_buffer.shape[1] >= 256:
+                # copy_eeg_buffer = fix_buffer_size(eeg_buffer.copy())
+                # copy_ecg_buffer = fix_buffer_size(ecg_buffer.copy())
+                copy_eeg_buffer = eeg_buffer.copy()
+                copy_ecg_buffer = ecg_buffer.copy()
+                eeg_buffer = np.zeros((32, 0))  # Reset buffer after processing
+                ecg_buffer = np.zeros((2, 0))  # Reset buffer after processing
+                print(f"Buffer shape after reset: EEG: {eeg_buffer.shape}, ECG: {ecg_buffer.shape}")
+                print(f"Copy Buffer shape after reset: EEG: {copy_eeg_buffer.shape}, ECG: {copy_ecg_buffer.shape}")
+                model_output = get_prediction(eeg_data=copy_eeg_buffer, ecg_data=copy_ecg_buffer)
+                print("\n==============\nPrediction:", model_output)
+            if eeg_buffer.shape[1] >= 256: 
+                # with eeg_buffer_lock:
+                # if eeg_buffer.shape[1] >= 256 * 5:
+                #     copy_eeg_buffer = eeg_buffer.copy()
+                #     eeg_buffer = np.zeros((32, 0))
+
+                print_cyan(f"\nEEG buffer shape: {eeg_buffer.shape[1]}")
+                # Before sending data
+                # if eeg_buffer.shape[1] >= 256:
+                # copy_eeg_buffer = fix_buffer_size(eeg_buffer.copy())
                 copy_eeg_buffer = eeg_buffer.copy()
                 eeg_buffer = np.zeros((32, 0))  # Reset buffer after processing
                 print("Buffer shape after reset:", eeg_buffer.shape)
                 print("Buffer shape:", copy_eeg_buffer.shape)
-                model_output = get_prediction(copy_eeg_buffer)
+                model_output = get_prediction(eeg_data=copy_eeg_buffer)
                 print("\n==============\nPrediction:", model_output)
-                
-            model_emotion_probs = model_output.get("probabilities")
-            physio_inference = get_physiometrics(model_emotion_probs)
+            if ecg_buffer.shape[1] >= 256: 
+                # with ecg_buffer_lock:
+                print_cyan(f"\nECG buffer shape: {ecg_buffer.shape[1]}")
+                # Before sending data
+                # if ecg_buffer.shape[1] >= 256:
+                # copy_ecg_buffer" = fix_buffer_size(ecg_buffer.copy())
+                copy_ecg_buffer = ecg_buffer.copy()
+                ecg_buffer = np.zeros((2, 0))  # Reset buffer after processing
+                print("Buffer shape after reset:", ecg_buffer.shape)
+                print("Copy Buffer shape:", copy_ecg_buffer.shape)
+            
+                model_output = get_prediction(ecg_data=copy_ecg_buffer)
+                print("\n==============\nPrediction:", model_output)
+                        
+            physio_inference = {}
+            if model_output:
+                model_emotion_probs = model_output.get("probabilities")
+                physio_inference = get_physiometrics(model_emotion_probs)
             
             behavioral_data = parse_game_state(game_state)
             if behavioral_data:
@@ -1078,17 +1283,40 @@ def process_and_explain(physio_window=1.0):
 #         time.sleep(1 / 6)  # Run at ~6Hz
 
 
+# === Step 4: Redirect `print()` to logging.info ===
+class PrintLogger:
+    def write(self, message):
+        message = message.strip()
+        if message:
+            logger.info(message)
+
+    def flush(self):
+        pass  # Required for compatibility
+    
+def safe_thread(fn, name):
+    def wrapper():
+        try:
+            fn()
+        except Exception as e:
+            logging.exception(f"❌ Thread '{name}' crashed: {e}")
+    return wrapper
+
+   
 # ========== Start Everything ==========
 if __name__ == '__main__':
-    try:
-        # connect to the socket server
-        sio.connect(f'http://{SERVER_IP}:{PORT}')
-        if not sio.connected:
-            print_red("Socket connection failed. Retrying in 3s...")
-            time.sleep(3)
     
-    except Exception as e:
-        print_red("Socket Connection failed:", e)
+    socket_connected.clear()
+    threading.Thread(target=retry_socket_connection).start()
+    ## old code below#
+    # try:
+    #     # connect to the socket server
+    #     sio.connect(f'http://{SERVER_IP}:{PORT}')
+    #     if not sio.connected:
+    #         print_red("Socket connection failed. Retrying in 3s...")
+    #         time.sleep(3)
+    
+    # except Exception as e:
+    #     print_red("Socket Connection failed:" + e)
         
     # Start LSL stream listener
     threading.Thread(target=stream_ecg, daemon=True).start()
@@ -1112,6 +1340,31 @@ if __name__ == '__main__':
         # === Step 1: Create logs directory ===
         os.makedirs("app_logs", exist_ok=True)
 
+        # === Step 2: Generate timestamped log filename ===
+        log_filename = datetime.now().strftime("app_logs/session_%Y-%m-%d_%H-%M-%S.log")
+
+        # === Step 3: Configure Logging ===
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+
+        # Clear existing handlers
+        logger.handlers = []
+
+        # File handler (writes all logs)
+        file_handler = logging.FileHandler(log_filename)
+        file_handler.setLevel(logging.DEBUG)
+        file_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+        file_handler.setFormatter(file_formatter)
+
+        # Console handler (prints to terminal)
+        console_handler = logging.StreamHandler(sys.__stdout__)
+        console_handler.setLevel(logging.DEBUG)
+        console_handler.setFormatter(file_formatter)
+
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+        sys.stdout = PrintLogger()
+        sys.stderr = PrintLogger()  # Optional: also redirect errors
     while True:
         time.sleep(1)  # Keep main thread alive
 

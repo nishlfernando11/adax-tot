@@ -110,6 +110,8 @@ src/data/*.csv
 src/*.ipynb
 csvlogs
 datalogs
+metrics_logs
+metrics_logs_new
 
 notebook results
 
