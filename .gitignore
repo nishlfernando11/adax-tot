@@ -110,6 +110,8 @@ src/data/*.csv
 src/*.ipynb
 csvlogs
 datalogs
+metrics_logs
+metrics_logs_new
 
 notebook results
 
@@ -117,5 +119,3 @@ src/LLMHandler.py
 src/emitService.py
 src/emittest.py
 src/tot.py
-metrics_logs/
-metrics_logs_new/
