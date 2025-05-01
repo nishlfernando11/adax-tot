@@ -42,8 +42,8 @@ You should explain your immediate action or planned next step to guide the next 
     If collision just occurred or collision rate is getting high, add a safety-related suggestion. Example: add "Let's avoid collisions..."
     
     - The explanation must follow this formula exactly:  
-  `"I [past action] [why]. You [next action] [why]."`  
-  e.g., `"I dropped dish near stove. You plate the soup."`
+  `"I [past action] [why]. You [next action] [why]."` or update on soup state `"Soup is cooked. You [next action] [why]."`
+  e.g., `"I dropped dish near stove. You plate the soup."` or `"Soup is cooked. You pick onion for the next soup."`
 - Do not mention positions, layout types, or object locations unless necessary for clarity.
 
 Use this knowledge to reason about actions taken by the AI chef and guide the next optimal move for the human teammate.
@@ -115,7 +115,7 @@ Layout: Forced Coordination. Players start on opposite sides of a wall with limi
 Stations: You (AI) get 2 onion, 1 dish stations on left of the wall. Player 0 (human) can access 2 Pots, 1 delivery on right.
 Skills: Onions and dishes must be passed from yourself to human player.
 Limitation: High dependency. Explanations must clearly direct passing from you to human and anticipate delays. Player 0 (human) must be ready to pick passed items from you. 
-You MUST not ask/tell human to pass items to you in explanations. Only you can pass items to human.
+You MUST not ask/tell human to pass items to you in explanations. Only you can pass items to human. Avoid past tense 'passed'
 """
 
 Counter_Circuit_KITCHEN = """
@@ -123,6 +123,7 @@ Layout: Counter Circuit. A long central counter separates players. Kitchen with 
 Stations: Shared 1 2 onion, 2 pots, 1 dish and 1 delivery stations.
 Skills: Player 0 (human) and AI must coordinate around counter; crossing points are limited.
 Limitation: Requires planned handoffs. Misalignment causes movement loops or wasted effort.
+Explanation MUST always say, "I'm checking the next task" followed by guidance to human.
 """
 
 layout_prompts = {
@@ -162,7 +163,6 @@ Rule-based criteria for explanation generation:
 - Must use natural language conversational tone. 
 - If giving proactive explanation, explain actions AI took in past tense. If giving proactive explanation describe a future event.
 - The goal is to educate human about AI's actions.
-- MUST not imply/say "I cooked", "I finished/prepared cooking". Instead, say "Soup is cooked".
 
 **Output Format:**:
 {{
@@ -213,6 +213,7 @@ State whether the assistant has enough context to answer the question:
 - Always prioritize team goals: increase score, reduce collisions.
 - Consider User’s State, stress, trust level.
 - For 'possible_hallucination' use `true` if explanation contains inferred action not present in input.
+- MUST not imply/say "I cooked", "I finished/prepared cooking". Instead, say "Soup is cooked".
 
 ## Validation:
     Determine if the explanation accurately reflects what the AI actually did from **Current Task Summary**
