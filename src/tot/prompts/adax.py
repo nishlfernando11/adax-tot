@@ -62,9 +62,10 @@ Use this knowledge to reason about actions taken by the AI chef and guide the ne
 - Do NOT reuse old explanations or similar past scenarios unless they match the current state exactly.
 - Do NOT guess or assume what action happened.
 
-- Do not create hallucinated explanations. Fact check with provided context.
-- Do not mention 'game'. This should be a cooking task.
-- Use a conversational tone
+- MUST not create hallucinated explanations. Fact check with provided context.
+- NUST not mention 'game'. This should be a cooking task.
+- MUST not say "I am idle" or "I am doing nothing", "I am holding nothing".
+- Use a conversational tone. MUST not be robotic or overly technical. MUST not mention "human" or "AI". Use "you" and "I" instead.
 - Explanation language MUST be accurate and clear.
 
 
@@ -98,7 +99,7 @@ Limitation: Easy collisions near central pot and delivery station. Clear role as
 Asymmetric_Advantages_KITCHEN = """
 Layout: Asymmetric Advantages. Split kitchen with uneven access to key stations.
 Stations: 2 shared pots. Each gets 1 own onion, 1 dish and 1 delivery stations.
-Skills: Human can access onion/pot/dish easily; AI can reach dishes/pot/delivery faster.
+Skills: Player 0 (human) can access onion/pot/dish easily; AI can reach dishes/pot/delivery faster.
 Limitation: Role-based division needed. Miscommunication leads to idle time or duplication.
 """
 
@@ -111,15 +112,16 @@ Limitation: Requires coordinated flow. Reversing direction or hesitations cause 
 
 Forced_Coordination_KITCHEN = """
 Layout: Forced Coordination. Players start on opposite sides of a wall with limited pass zones.
-Stations: You (AI) get 2 onion, 1 dish stations on left of the wall. Human can access 2 Pots, 1 delivery on right.
-Skills: No player can complete soup alone. Onions and dishes must be passed from AI (yourself) to human player.
-Limitation: High dependency. Explanations must clearly direct passes and anticipate delays.
+Stations: You (AI) get 2 onion, 1 dish stations on left of the wall. Player 0 (human) can access 2 Pots, 1 delivery on right.
+Skills: Onions and dishes must be passed from yourself to human player.
+Limitation: High dependency. Explanations must clearly direct passing from you to human and anticipate delays. Player 0 (human) must be ready to pick passed items from you. 
+You MUST not ask/tell human to pass items to you in explanations. Only you can pass items to human.
 """
 
 Counter_Circuit_KITCHEN = """
 Layout: Counter Circuit. A long central counter separates players. Kitchen with all stations accessible by both players. Middle bench for passing items quickly or make long movements.
 Stations: Shared 1 2 onion, 2 pots, 1 dish and 1 delivery stations.
-Skills: Human and AI must coordinate around counter; crossing points are limited.
+Skills: Player 0 (human) and AI must coordinate around counter; crossing points are limited.
 Limitation: Requires planned handoffs. Misalignment causes movement loops or wasted effort.
 """
 
@@ -186,7 +188,7 @@ Given the following real-time data, generate a concise explanation (≤12 words)
 
 Speak as if the AI is directly guiding the human. For example:
 "I picked dish to plate soup. You pick onion for the next order."
-Do not say "holding nothing".
+MUST not say unhelpful things like "holding nothing", "idle", "doing nothing", "finish holding".
 
 ##States
 **User’s State**: {physiological_state}
@@ -212,8 +214,8 @@ State whether the assistant has enough context to answer the question:
 
 ## Validation:
     Determine if the explanation accurately reflects what the AI actually did from **Current Task Summary**
-    Accept if AI is explaining a future action or a requirement/need.
-    If it falsely attributes an action (e.g., AI claims it picked onion when it didn't), mark it as incorrect.
+    Accept explanations on a future action or a requirement/need.
+    If it falsely attributes an action (e.g., AI claims it picked onion when it didn't), mark it as INVALID.
 
     Options for 'validity' in the final output.
     - VALID: The explanation is factually correct
@@ -257,7 +259,7 @@ State whether the assistant has enough context to answer the question:
 # "I dropped dish for plating. You plate soup to serve quickly."
 
 vote_prompt = '''
-Which of these is a better explanation from an AI chef?
+Which of these is a better and accurate explanation from an AI chef?
 
 # Choices:
 1. {Explanation_1}
@@ -270,7 +272,7 @@ Conclude in the last line:
 Pick the better one (1 or 2) based on clarity, trust, and helpfulness:
 '''
 
-vote_prompt_prev = '''
+vote_prompt_v2 = '''
 You are evaluating multiple AI-generated explanations for the AI chef’s recent action in Overcooked. Your goal is to choose the **most context-appropriate and user-aligned explanation**.
 
 # Context:
@@ -324,7 +326,7 @@ Conclude in the last line:
 "The best adaptive explanation is {s}" where s is the explanation number.
 '''
 
-vote_prompt_old = '''
+vote_prompt_v1 = '''
 Given a task and multiple possible explanations, decide which **best fits the user’s state**.
 
 # Evaluation and Selection:

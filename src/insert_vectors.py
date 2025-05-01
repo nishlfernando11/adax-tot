@@ -30,7 +30,7 @@ def format_content(row):
 
 def extract_keywords(explanation: str):
     import re
-    verbs = ["picked", "dropped", "moved", "placed", "delivered", "grabbed"]
+    verbs = ["pick", "drop", "move", "place", "deliver", "grab", "hold", "picked", "dropped", "moved", "placed", "delivered", "grabbed", "held", "picking", "dropping", "moving", "placing", "delivering", "grabbing", "holding"]
     objects = ["onion", "dish", "soup", "pot", "station"]
     keywords = []
     for verb in verbs:
@@ -40,7 +40,7 @@ def extract_keywords(explanation: str):
                 keywords.append(obj)
     # Fallback: split important words
     if not keywords:
-        keywords = re.findall(r'\b(onion|dish|pot|soup|deliver|pick|drop|plate)\b', explanation)
+        keywords = re.findall(r'\b(onion|dish|pot|soup|deliver|hold|pick|drop|plate|move)\b', explanation)
     return list(set(keywords))
 
 

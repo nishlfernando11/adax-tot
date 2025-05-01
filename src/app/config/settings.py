@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 load_dotenv(dotenv_path="./.env")
+ADAX_EMBED_TABLE = os.getenv("ADAX_EMBED_TABLE")
 
 EMBEDDING_SIZE = 384 # 1024
 
@@ -50,7 +51,7 @@ class DatabaseSettings(BaseModel):
 class VectorStoreSettings(BaseModel):
     """Settings for the VectorStore."""
 
-    table_name: str = "adax_embeddings" #"embeddings"
+    table_name: str = ADAX_EMBED_TABLE #"embeddings"
     embedding_dimensions: int = EMBEDDING_SIZE #1536
     time_partition_interval: timedelta = timedelta(days=7)
 

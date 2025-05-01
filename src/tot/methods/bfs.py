@@ -355,12 +355,13 @@ def solve(args, task, idx, to_print=True, vector_db=None, parallel=False, return
                             verified_map[y] = result
                     except Exception as e:
                         print_red(f"Verification failed for {y}: {e}")
+            print("⏱ verify_with_gpt() time:", round(time.time() - start, 2), "s")
 
             if verified_ys:
                 new_ys = verified_ys
             else:
                 print("⚠️ All explanations were invalid. Proceeding with originals.")
-        print("⏱ verify_with_gpt() time:", round(time.time() - start, 2), "s")
+                # return ys, {'steps': infos}
 
         start = time.time()
         if args.method_evaluate == 'vote':

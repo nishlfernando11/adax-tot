@@ -29,12 +29,19 @@ from StressModel import *
 
 load_dotenv(dotenv_path="./.env")
 
+
+def str_to_bool(value):
+    return str(value).strip().lower() in ['true', '1', 'yes']
+
 # Load API key from env var (preferred)
 SERVER_IP = os.getenv("SERVER_IP")
 PORT = os.getenv("PORT")
-DEBUG_LOGGEER = os.getenv("DEBUG_LOGGER")
+DEBUG_LOGGEER = str_to_bool(os.getenv("DEBUG_LOGGER"))
 METRIC_LOGGEER = os.getenv("METRIC_LOGGEER")
+VERIFY_WITH_GPT = str_to_bool(os.getenv("VERIFY_WITH_GPT"))
 
+print("VERIFY_WITH_GPT", VERIFY_WITH_GPT)
+print("DEBUG_LOGGEER", DEBUG_LOGGEER)
 
 sio = socketio.Client()
 vec = VectorStore()
@@ -484,10 +491,45 @@ def get_static_explanation(behavioral_data, physio_inference, timestamp, model_o
     
     save_metrics_data(behavioral_data, behavioral_data.get("playerId"), model_output)
     
+# def get_adax_explanation(behavioral_data, physio_inference, timestamp, model_output):
+#     #TODO: Use held object and player information in the prompt
+#     # args = argparse.Namespace(backend='mistral:7b-instruct-q4_0', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=True, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
+#     args = argparse.Namespace(backend='gpt-4.1-nano', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=False, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
+#     #gpt-4.1-mini
+#     #gpt-3.5-turbo
+#     # gpt-4o-mini
+#     #gpt-4o
+#     ## not very good
+#     # gpt-4.1-nano
+#     #gpt-4o-realtime-preview
+#     task = AdaXTask(vector_db=vec)
+    
+#     task.set_data([{"timestamp": timestamp, "behavioral_state": behavioral_data, "physiological_state": physio_inference}])
+
+#     print_green("Starting explanation generation...")
+#     start = time.time()
+#     ys, infos = solve(args, task, 0, vector_db=vec, parallel=True, xai_agent_type='AdaX')
+#     print("⏱ solve() time:", round(time.time() - start, 2), "s")
+    
+#     static_explanation = task.standard_rule_based_explanation(behavioral_data)
+
+#     if static_explanation:
+#         sio.emit('xai_message', {'explanation': static_explanation,  'xai_agent_type': xai_agent_type})
+#     else:
+#         sio.emit('xai_message', {'explanation': 'I am cooking onion soup.', 'xai_agent_type': xai_agent_type})
+
+#     formatted_data = map_state_and_features_to_output(behavioral_data, physio_inference, {})
+#     # print("Formatted data:", formatted_data)
+#     rag_record = process_row(formatted_data, vec)
+#     # print("RAG record:", rag_record)
+#     vec.upsert(rag_record)
+    
+#     save_metrics_data(behavioral_data, behavioral_data.get("playerId"), model_output)
+    
 def get_adax_explanation(behavioral_data, physio_inference, timestamp, model_output):
     #TODO: Use held object and player information in the prompt
     # args = argparse.Namespace(backend='mistral:7b-instruct-q4_0', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=True, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
-    args = argparse.Namespace(backend='gpt-4.1-nano', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=False, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
+    args = argparse.Namespace(backend='gpt-4.1-nano', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=VERIFY_WITH_GPT, is_local=False, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
     #gpt-4.1-mini
     #gpt-3.5-turbo
     # gpt-4o-mini
@@ -499,64 +541,50 @@ def get_adax_explanation(behavioral_data, physio_inference, timestamp, model_out
     
     task.set_data([{"timestamp": timestamp, "behavioral_state": behavioral_data, "physiological_state": physio_inference}])
 
+    # Optional: during the delay send a static explanation
+    # static_explanation = task.standard_rule_based_explanation(behavioral_data)
+    # if static_explanation:
+    #     sio.emit('xai_message', {
+    #         'explanation': static_explanation,
+    #         'xai_agent_type': xai_agent_type,
+    #         'fallback': True  # optional flag to show it's static
+    #     })
     print_green("Starting explanation generation...")
     start = time.time()
     ys, infos = solve(args, task, 0, vector_db=vec, parallel=True, xai_agent_type='AdaX')
     print("⏱ solve() time:", round(time.time() - start, 2), "s")
-    
-    static_explanation = task.standard_rule_based_explanation(behavioral_data)
-
-    if static_explanation:
-        sio.emit('xai_message', {'explanation': static_explanation,  'xai_agent_type': xai_agent_type})
+    print(ys)
+    if not ys[0]:
+        print_red("No valid explanation found.")
+        parsed_data = {}
+        static_explanation = task.standard_rule_based_explanation(behavioral_data)
+        if static_explanation:
+            sio.emit('xai_message', {
+                'explanation': static_explanation,
+                'xai_agent_type': xai_agent_type,
+                'fallback': True  # optional flag to show it's static
+            })
+        parsed_data = {
+            "answer": static_explanation,
+            "features": {},
+            "justification": "static_explanation"
+        }
     else:
-        sio.emit('xai_message', {'explanation': 'I am cooking onion soup.', 'xai_agent_type': xai_agent_type})
+        # print(infos)
+        # print(ys)
+        # Fix escaped underscore in the JSON string
+        fixed_json_str = re.sub(r'\\\\_', '_', ys[0]).replace("True", "true").replace("False", "false")
+        # print(fixed_json_str)
+        # Now parse the fixed JSON
+        parsed_data = json.loads(fixed_json_str)
+        # print(parsed_data)
+        print_green("\n\n=========================================\n")
+        print_green(f"Best explanation: {parsed_data['answer']}")
+        print_green(f"Features used: {parsed_data['features']}") 
+        print_green(f"enough_context: {parsed_data['enough_context']}")
+        print_green("\n=========================================\n\n")
 
-    formatted_data = map_state_and_features_to_output(behavioral_data, physio_inference, {})
-    # print("Formatted data:", formatted_data)
-    rag_record = process_row(formatted_data, vec)
-    # print("RAG record:", rag_record)
-    vec.upsert(rag_record)
-    
-    save_metrics_data(behavioral_data, behavioral_data.get("playerId"), model_output)
-    
-def get_adax_explanation_old(behavioral_data, physio_inference, timestamp, model_output):
-    #TODO: Use held object and player information in the prompt
-    # args = argparse.Namespace(backend='mistral:7b-instruct-q4_0', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=True, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
-    args = argparse.Namespace(backend='gpt-4.1-mini', temperature=0.6, task='adax', xai_agent_type='AdaX', verify_with_gpt=True, is_local=False, naive_run=False, prompt_sample="cot", method_generate='sample', method_evaluate='vote', method_select='greedy', n_generate_sample=2, n_evaluate_sample=2, n_select_sample=1, return_dataframe=True)
-    #gpt-4.1-mini
-    #gpt-3.5-turbo
-    task = AdaXTask(vector_db=vec)
-    
-    task.set_data([{"timestamp": timestamp, "behavioral_state": behavioral_data, "physiological_state": physio_inference}])
-
-    # Optional: during the delay send a static explanation
-    static_explanation = task.standard_rule_based_explanation(behavioral_data)
-    if static_explanation:
-        sio.emit('xai_message', {
-            'explanation': static_explanation,
-            'xai_agent_type': xai_agent_type,
-            'fallback': True  # optional flag to show it's static
-        })
-    print_green("Starting explanation generation...")
-    start = time.time()
-    ys, infos = solve(args, task, 0, vector_db=vec, parallel=True)
-    print("⏱ solve() time:", round(time.time() - start, 2), "s")
-    
-    # print(infos)
-    # print(ys)
-    # Fix escaped underscore in the JSON string
-    fixed_json_str = re.sub(r'\\\\_', '_', ys[0]).replace("True", "true").replace("False", "false")
-    # print(fixed_json_str)
-    # Now parse the fixed JSON
-    parsed_data = json.loads(fixed_json_str)
-    # print(parsed_data)
-    print_green("\n\n=========================================\n")
-    print_green(f"Best explanation: {parsed_data['answer']}")
-    print_green(f"Features used: {parsed_data['features']}") 
-    print_green(f"enough_context: {parsed_data['enough_context']}")
-    print_green("\n=========================================\n\n")
-
-    sio.emit('xai_message', {'explanation': str(parsed_data['answer']),  'xai_agent_type': xai_agent_type})
+        sio.emit('xai_message', {'explanation': str(parsed_data['answer']),  'xai_agent_type': xai_agent_type})
     
     #TODO: save entry to RAG
     formatted_data = map_state_and_features_to_output(behavioral_data, physio_inference, parsed_data)
@@ -1299,11 +1327,13 @@ if __name__ == '__main__':
         
     # Start LSL stream listener
     threading.Thread(target=stream_ecg, daemon=True).start()
-    threading.Thread(target=stream_eeg, daemon=True).start()
-    threading.Thread(target=stream_metrics, daemon=True).start()
+    # threading.Thread(target=stream_eeg, daemon=True).start()
+    # threading.Thread(target=stream_metrics, daemon=True).start()
     threading.Thread(target=stream_game, daemon=True).start()
-    # threading.Thread(target=run_lsl_logger, daemon=True).start()
     threading.Thread(target=process_and_explain, daemon=True).start()
+    
+    ## threading.Thread(target=run_lsl_logger, daemon=True).start()
+    
     
     # # threading.Thread(target=safe_thread(stream_ecg, 'ECG'), daemon=True).start()
     # # threading.Thread(target=safe_thread(stream_eeg, 'EEG'), daemon=True).start()
