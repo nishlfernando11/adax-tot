@@ -107,7 +107,7 @@ def summarize_rag_rows(df, top_n=3):
         user_state = (
             f"Stress {row.get('stress', '?')}, "
             f"Trust {row.get('trust', '?')}, "
-            f"Cognitive load {row.get('cognitive_load', '?')}"
+            # f"Cognitive load {row.get('cognitive_load', '?')}"
         )
 
         pot_info = "; ".join(pot_status) if isinstance(pot_status, list) else str(pot_status)
@@ -417,7 +417,7 @@ def get_samples(task, x, ys, context, n_generate_sample, prompt_sample, stop, is
 
             import time
             start = time.time()
-            # print(f"\nPrompt: {prompt}\n")
+            print_cyan(f"\nPrompt: {prompt}\n")
             samples = local_model(prompt, n=n_generate_sample, stop=stop) if is_local else gpt(prompt, n=n_generate_sample, stop=stop)
             end = time.time()
             print(f"Time taken to generate samples: {end - start:.2f}s")

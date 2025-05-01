@@ -36,8 +36,8 @@ def extract_system_context(state):
     
     return {
     "stress": (state.get("physiological_state") or {}).get("stress"),
-    # "trust": (state.get("physiological_state") or {}).get("trust"),
-    "cognitive_load": (state.get("physiological_state") or {}).get("cognitive_load"),
+    "trust": (state.get("physiological_state") or {}).get("trust"),
+    # "cognitive_load": (state.get("physiological_state") or {}).get("cognitive_load"),
     "num_collisions": (state.get("behavioral_state") or {}).get("num_collisions"),
     "score": (state.get("behavioral_state") or {}).get("score"),
     "time_left": (state.get("behavioral_state") or {}).get("time_left"),
@@ -476,8 +476,8 @@ def get_context_features(state):
         "playerId": context_features["playerId"],
         "layout_name": context_features["layout_name"],
         "stress": context_features["stress"],
-        # "trust": context_features["trust"],
-        "cognitive_load": context_features["cognitive_load"],
+        "trust": context_features["trust"],
+        # "cognitive_load": context_features["cognitive_load"],
         "score": context_features["score"],
         "num_collisions": context_features["num_collisions"],
         "time_left": context_features["time_left"],

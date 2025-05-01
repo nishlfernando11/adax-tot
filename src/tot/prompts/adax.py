@@ -162,6 +162,7 @@ Rule-based criteria for explanation generation:
 - Must use natural language conversational tone. 
 - If giving proactive explanation, explain actions AI took in past tense. If giving proactive explanation describe a future event.
 - The goal is to educate human about AI's actions.
+- MUST not imply/say "I cooked", "I finished/prepared cooking". Instead, say "Soup is cooked".
 
 **Output Format:**:
 {{
@@ -210,6 +211,7 @@ State whether the assistant has enough context to answer the question:
 - Be specific and natural; avoid coordinates, layout names, or generic phrases.
 - If a collision just occurred, include that insight.
 - Always prioritize team goals: increase score, reduce collisions.
+- Consider User’s State, stress, trust level.
 - For 'possible_hallucination' use `true` if explanation contains inferred action not present in input.
 
 ## Validation:
