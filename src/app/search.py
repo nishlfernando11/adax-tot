@@ -449,14 +449,14 @@ def standard_rule_based_explanation(game_data):
             if obj_name == "soup":
                 return "I picked soup to deliver."
 
-        for obj in objects:
-            if obj.get("name") == "soup":
-                if obj.get("is_ready"):
-                    return "Soup is ready to be delivered."
-                if obj.get("is_cooking"):
-                    return "Soup is cooking."
-                if len(obj.get("_ingredients", [])) < 3:
-                    return "Pot needs more onions."
+        # for obj in objects:
+        #     if obj.get("name") == "soup":
+        #         if obj.get("is_ready"):
+        #             return "Soup is ready to be delivered."
+        #         if obj.get("is_cooking"):
+        #             return "Soup is cooking."
+        #         if len(obj.get("_ingredients", [])) < 3:
+        #             return "Pot needs more onions."
 
         return "I’m going for soup preparation."
 

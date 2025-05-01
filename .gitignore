@@ -111,6 +111,7 @@ src/*.ipynb
 csvlogs
 datalogs
 metrics_logs
+metrics_logs_prod
 metrics_logs_new
 
 notebook results
